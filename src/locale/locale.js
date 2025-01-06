@@ -1,10 +1,10 @@
 /* global window */
-import en from "./en";
+import zhCN from "./zh-cn";
 
-// Defines the fallback language as English
-let $languages = ["en"];
+// 修改默认语言设置
+let $languages = ['zh-cn'];  // 使用正确的语言代码
 const $messages = {
-  en,
+  'zh-cn': zhCN,  // 键名要和语言代码一致
 };
 
 function translate(key, messages) {
@@ -55,17 +55,20 @@ function tf(key) {
 // if lang is missing some keys. The language array is preloaded with English.
 // To set the languages array to only include lang, set clearLangList to true.
 function locale(lang, message, clearLangList = false) {
+  // 确保语言代码统一使用小写
+  const normalizedLang = lang.toLowerCase();
+  
   if (clearLangList) {
-    $languages = [lang];
+    $languages = [normalizedLang];
   } else {
-    // Append to front of array.
-    // Translation method will use the first language in the list that has a
-    // matching key.
-    $languages.unshift(lang);
+    // 避免重复添加
+    if (!$languages.includes(normalizedLang)) {
+      $languages.unshift(normalizedLang);
+    }
   }
 
   if (message) {
-    $messages[lang] = message;
+    $messages[normalizedLang] = message;
   }
 }
 

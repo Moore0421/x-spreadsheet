@@ -4,17 +4,30 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width" />
     <title><%= htmlWebpackPlugin.options.title %></title>
+    <!-- 先加载主程序 -->
+    <script src="https://unpkg.com/x-data-spreadsheet@1.1.0/dist/xspreadsheet.js"></script>
+    <!-- 再加载中文语言包 -->
+    <script src="https://unpkg.com/x-data-spreadsheet@1.1.0/dist/locale/zh-cn.js"></script>
+    <script>
+      window.onload = function() {
+        if (typeof x_spreadsheet !== 'undefined') {
+          // 使用正确的语言代码 'zh-cn'
+          x_spreadsheet.locale('zh-cn');
+          load();
+        } else {
+          console.error('x_spreadsheet not loaded');
+        }
+      }
+    </script>
+    <style type="text/css">
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Microsoft YaHei, PingFang SC, sans-serif;
+      }
+    </style>
   </head>
-  <body onload="load()">
-    <div style="position: fixed; right: 0; top: 0.3em">
-      <iframe
-        src="https://ghbtns.com/github-btn.html?user=myliang&repo=x-spreadsheet&type=star&count=true&size=large"
-        frameborder="0"
-        scrolling="0"
-        width="160px"
-        height="30px"
-      ></iframe>
-    </div>
+  <body>
     <div id="x-spreadsheet-demo" style="height: 100vh"></div>
     <script>
       function load() {
@@ -52,7 +65,7 @@
             },
           },
         };
-        // x_spreadsheet.locale('zh-cn');
+        
         var saveIcon =
           "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+PHN2ZyB0PSIxNTc3MTc3MDkyOTg4IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjI2NzgiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PC9zdHlsZT48L2RlZnM+PHBhdGggZD0iTTIxMy4zMzMzMzMgMTI4aDU5Ny4zMzMzMzRhODUuMzMzMzMzIDg1LjMzMzMzMyAwIDAgMSA4NS4zMzMzMzMgODUuMzMzMzMzdjU5Ny4zMzMzMzRhODUuMzMzMzMzIDg1LjMzMzMzMyAwIDAgMS04NS4zMzMzMzMgODUuMzMzMzMzSDIxMy4zMzMzMzNhODUuMzMzMzMzIDg1LjMzMzMzMyAwIDAgMS04NS4zMzMzMzMtODUuMzMzMzMzVjIxMy4zMzMzMzNhODUuMzMzMzMzIDg1LjMzMzMzMyAwIDAgMSA4NS4zMzMzMzMtODUuMzMzMzMzeiBtMzY2LjkzMzMzNCAxMjhoMzQuMTMzMzMzYTI1LjYgMjUuNiAwIDAgMSAyNS42IDI1LjZ2MTE5LjQ2NjY2N2EyNS42IDI1LjYgMCAwIDEtMjUuNiAyNS42aC0zNC4xMzMzMzNhMjUuNiAyNS42IDAgMCAxLTI1LjYtMjUuNlYyODEuNmEyNS42IDI1LjYgMCAwIDEgMjUuNi0yNS42ek0yMTMuMzMzMzMzIDIxMy4zMzMzMzN2NTk3LjMzMzMzNGg1OTcuMzMzMzM0VjIxMy4zMzMzMzNIMjEzLjMzMzMzM3ogbTEyOCAwdjI1NmgzNDEuMzMzMzM0VjIxMy4zMzMzMzNoODUuMzMzMzMzdjI5OC42NjY2NjdhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDAgMS00Mi42NjY2NjcgNDIuNjY2NjY3SDI5OC42NjY2NjdhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDAgMS00Mi42NjY2NjctNDIuNjY2NjY3VjIxMy4zMzMzMzNoODUuMzMzMzMzek0yNTYgMjEzLjMzMzMzM2g4NS4zMzMzMzMtODUuMzMzMzMzeiBtNDI2LjY2NjY2NyAwaDg1LjMzMzMzMy04NS4zMzMzMzN6IG0wIDU5Ny4zMzMzMzR2LTEyOEgzNDEuMzMzMzMzdjEyOEgyNTZ2LTE3MC42NjY2NjdhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDAgMSA0Mi42NjY2NjctNDIuNjY2NjY3aDQyNi42NjY2NjZhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDAgMSA0Mi42NjY2NjcgNDIuNjY2NjY3djE3MC42NjY2NjdoLTg1LjMzMzMzM3ogbTg1LjMzMzMzMyAwaC04NS4zMzMzMzMgODUuMzMzMzMzek0zNDEuMzMzMzMzIDgxMC42NjY2NjdIMjU2aDg1LjMzMzMzM3oiIHAtaWQ9IjI2NzkiIGZpbGw9IiMyYzJjMmMiPjwvcGF0aD48L3N2Zz4=";
         var previewEl = document.createElement("img");
@@ -61,6 +74,7 @@
         previewEl.width = 16;
         previewEl.height = 16;
 
+        // 然后再初始化电子表格
         var xs = x_spreadsheet("#x-spreadsheet-demo", {
           showToolbar: true,
           showGrid: true,
@@ -68,7 +82,7 @@
           extendToolbar: {
             left: [
               {
-                tip: "Save",
+                tip: "保存",
                 icon: saveIcon,
                 onClick: (data, sheet) => {
                   console.log("click save button：", data, sheet);
@@ -77,7 +91,7 @@
             ],
             right: [
               {
-                tip: "Preview",
+                tip: "预览",
                 el: previewEl,
                 onClick: (data, sheet) => {
                   console.log("click preview button：", data);
@@ -121,6 +135,5 @@
           });
       }
     </script>
-    <!--script type="text/javascript" src="https://unpkg.com/x-data-spreadsheet@1.0.20/dist/locale/zh-cn.js"></script-->
   </body>
 </html>

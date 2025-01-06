@@ -1,6 +1,6 @@
-import { h } from "./element";
-import Icon from "./icon";
-import { t } from "../locale/locale";
+import { h } from './element';
+import Icon from './icon';
+import { t } from '../locale/locale';
 
 function addMonth(date, step) {
   date.setMonth(date.getMonth() + step);
@@ -22,8 +22,7 @@ function monthDays(year, month, cdate) {
       const d = weekday(startDate, index);
       const disabled = d.getMonth() !== month;
       // console.log('d:', d, ', cdate:', cdate);
-      const active =
-        d.getMonth() === cdate.getMonth() && d.getDate() === cdate.getDate();
+      const active = d.getMonth() === cdate.getMonth() && d.getDate() === cdate.getDate();
       datess[i][j] = { d, disabled, active };
     }
   }
@@ -35,30 +34,31 @@ export default class Calendar {
     this.value = value;
     this.cvalue = new Date(value);
 
-    this.headerLeftEl = h("div", "calendar-header-left");
-    this.bodyEl = h("tbody", "");
+    this.headerLeftEl = h('div', 'calendar-header-left');
+    this.bodyEl = h('tbody', '');
     this.buildAll();
-    this.el = h("div", "x-spreadsheet-calendar").children(
-      h("div", "calendar-header").children(
-        this.headerLeftEl,
-        h("div", "calendar-header-right").children(
-          h("a", "calendar-prev")
-            .on("click.stop", () => this.prev())
-            .child(new Icon("chevron-left")),
-          h("a", "calendar-next")
-            .on("click.stop", () => this.next())
-            .child(new Icon("chevron-right")),
-        ),
-      ),
-      h("table", "calendar-body").children(
-        h("thead", "").child(
-          h("tr", "").children(
-            ...t("calendar.weeks").map((week) => h("th", "cell").child(week)),
+    this.el = h('div', 'x-spreadsheet-calendar')
+      .children(
+        h('div', 'calendar-header').children(
+          this.headerLeftEl,
+          h('div', 'calendar-header-right').children(
+            h('a', 'calendar-prev')
+              .on('click.stop', () => this.prev())
+              .child(new Icon('chevron-left')),
+            h('a', 'calendar-next')
+              .on('click.stop', () => this.next())
+              .child(new Icon('chevron-right')),
           ),
         ),
-        this.bodyEl,
-      ),
-    );
+        h('table', 'calendar-body').children(
+          h('thead', '').child(
+            h('tr', '').children(
+              ...(t('calendar.weeks') || ['日', '一', '二', '三', '四', '五', '六']).map(week => h('th', 'cell').child(week)),
+            ),
+          ),
+          this.bodyEl,
+        ),
+      );
     this.selectChange = () => {};
   }
 
@@ -87,9 +87,9 @@ export default class Calendar {
 
   buildHeaderLeft() {
     const { value } = this;
-    this.headerLeftEl.html(
-      `${t("calendar.months")[value.getMonth()]} ${value.getFullYear()}`,
-    );
+    // 确保months存在
+    const months = t('calendar.months') || [];
+    this.headerLeftEl.html(`${months[value.getMonth()] || ''} ${value.getFullYear()}`);
   }
 
   buildBody() {
@@ -97,19 +97,19 @@ export default class Calendar {
     const mDays = monthDays(value.getFullYear(), value.getMonth(), cvalue);
     const trs = mDays.map((it) => {
       const tds = it.map((it1) => {
-        let cls = "cell";
-        if (it1.disabled) cls += " disabled";
-        if (it1.active) cls += " active";
-        return h("td", "").child(
-          h("div", cls)
-            .on("click.stop", () => {
+        let cls = 'cell';
+        if (it1.disabled) cls += ' disabled';
+        if (it1.active) cls += ' active';
+        return h('td', '').child(
+          h('div', cls)
+            .on('click.stop', () => {
               this.selectChange(it1.d);
             })
             .child(it1.d.getDate().toString()),
         );
       });
-      return h("tr", "").children(...tds);
+      return h('tr', '').children(...tds);
     });
-    bodyEl.html("").children(...trs);
+    bodyEl.html('').children(...trs);
   }
 }

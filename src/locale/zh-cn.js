@@ -23,6 +23,14 @@ export default {
     autofilter: "自动筛选",
     formula: "函数",
     more: "更多",
+    grid: "网格线",
+    import: "导入",
+  },
+  comment: {
+    reply: "回复",
+    comment: "评论",
+    cancel: "取消",
+    clear: "清除",
   },
   contextmenu: {
     copy: "复制",
@@ -43,6 +51,9 @@ export default {
     cellnonprintable: "不可打印",
     celleditable: "可编辑",
     cellnoneditable: "不可编辑",
+    addComment: "添加评论",
+    showComment: "显示评论",
+    navigate: "定位到该单元格",
   },
   print: {
     size: "纸张大小",
@@ -109,8 +120,9 @@ export default {
     next: "下一步",
     cancel: "取消",
     remove: "删除",
-    save: "保存",
+    save: "保存",  // 之前显示为"Save"
     ok: "确认",
+    import: "导入",
   },
   sort: {
     desc: "降序",
