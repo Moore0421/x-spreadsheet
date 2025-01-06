@@ -98,12 +98,61 @@ export default class Bottombar {
           h("span", "").child(this.moreEl),
         ]
       : [h("span", "").child(this.moreEl)];
+    
+    this.arrowLeft = h("div", `${cssPrefix}-sheet-arrow left`)
+      .child("◄")
+      .on("click", () => this.scroll(-1));
+    
+    this.arrowRight = h("div", `${cssPrefix}-sheet-arrow right`)
+      .child("►")
+      .on("click", () => this.scroll(1));
+
+    this.scrollEl = h("div", `${cssPrefix}-sheet-scroll`);
+    
     this.el = h("div", `${cssPrefix}-bottombar`).children(
       this.contextMenu.el,
-      (this.menuEl = h("ul", `${cssPrefix}-menu`).child(
+      this.arrowLeft,
+      this.scrollEl.child(this.menuEl = h("ul", `${cssPrefix}-menu`).child(
         h("li", "").children(...menuChildrens)
-      ))
+      )),
+      this.arrowRight
     );
+
+    // 监听滚动事件以更新箭头显示状态
+    this.scrollEl.on("scroll", () => this.updateArrowsVisibility());
+  }
+
+  // 添加滚动方法
+  scroll(direction) {
+    const { scrollEl } = this;
+    const scrollLeft = scrollEl.el.scrollLeft;
+    const scrollWidth = this.menuEl.el.offsetWidth;
+    const clientWidth = scrollEl.el.clientWidth;
+    
+    // 计算每次滚动的距离(一屏的1/3)
+    const scrollStep = clientWidth / 3;
+    
+    scrollEl.el.scrollLeft = scrollLeft + (direction * scrollStep);
+  }
+
+  // 更新箭头显示状态
+  updateArrowsVisibility() {
+    const { scrollEl, arrowLeft, arrowRight } = this;
+    const { scrollLeft, scrollWidth, clientWidth } = scrollEl.el;
+    
+    // 显示/隐藏左箭头
+    if(scrollLeft > 0) {
+      arrowLeft.css("display", "flex");
+    } else {
+      arrowLeft.css("display", "none"); 
+    }
+    
+    // 显示/隐藏右箭头
+    if(scrollLeft + clientWidth < scrollWidth) {
+      arrowRight.css("display", "flex");
+    } else {
+      arrowRight.css("display", "none");
+    }
   }
 
   addItem(name, active, options) {
@@ -165,6 +214,7 @@ export default class Bottombar {
     this.items.push(item);
     this.menuEl.child(item);
     this.moreEl.reset(this.dataNames);
+    this.updateArrowsVisibility();
   }
 
   renameItem(index, value, skipSheetsTill = null) {
@@ -181,6 +231,7 @@ export default class Bottombar {
     this.items = [];
     this.dataNames = [];
     this.moreEl.reset(this.dataNames);
+    this.updateArrowsVisibility(); 
   }
 
   deleteItem() {
@@ -197,8 +248,10 @@ export default class Bottombar {
         this.activeEl.toggle();
         return [index, 0];
       }
+      this.updateArrowsVisibility();
       return [index, -1];
     }
+    this.updateArrowsVisibility();
     return [-1];
   }
 

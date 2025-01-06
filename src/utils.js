@@ -12,6 +12,42 @@ import { npx } from "./canvas/draw";
 
 const avialableFonts = Object.keys(fonts());
 
+const FONT_MAP = {
+  宋体: "SimSun",
+  黑体: "SimHei",
+  微软雅黑: "Microsoft YaHei",
+  楷体: "KaiTi",
+  仿宋: "FangSong",
+  新宋体: "NSimSun",
+  华文宋体: "STSong",
+  华文仿宋: "STFangsong",
+  华文中宋: "STZhongsong",
+  华文楷体: "STKaiti",
+  华文黑体: "STHeiti",
+};
+
+// 添加边框样式映射常量
+const BORDER_STYLE_MAP = {
+  solid: "thin",
+  dashed: "dashed",
+  dotted: "dotted",
+  double: "double",
+  groove: "medium",
+  ridge: "thick",
+  inset: "thin",
+  outset: "thin",
+};
+
+// 添加Excel到CSS的反向映射
+const EXCEL_TO_CSS_BORDER = {
+  thin: "solid",
+  medium: "solid",
+  thick: "solid",
+  dashed: "dashed",
+  dotted: "dotted",
+  double: "double",
+};
+
 const getStylingForClass = (styleTag, className) => {
   const cssRules = styleTag?.sheet?.cssRules || styleTag?.sheet?.rules;
   for (let i = 0; i < cssRules?.length; i++) {
@@ -72,8 +108,12 @@ const parseCssToXDataStyles = (styleString, cellType) => {
           fontStyles["italic"] = value === "italic";
           break;
         case "font-family":
+          const fontName = value.split(",")[0].trim().replace(/['"]/g, "");
+          const mappedFont = FONT_MAP[fontName] || fontName;
           const appliedFont =
-            avialableFonts.find((font) => value.includes(font)) ?? "Arial";
+            avialableFonts.find((font) =>
+              mappedFont.toLowerCase().includes(font.toLowerCase())
+            ) ?? "Arial";
           fontStyles["name"] = appliedFont;
           break;
         case "border":
@@ -83,24 +123,24 @@ const parseCssToXDataStyles = (styleString, cellType) => {
         case "border-right":
           if (property === "border" && !gridStatus && value === "0px") {
             gridStatus = true;
+            break;
           }
-          const regexp = /[^\s\(]+(\(.+\))?/g;
-          const values = String(value).match(regexp) ?? [];
-          let parsedValues = [];
-          if (values.length > 2) {
-            const intValue = parsePtOrPxValue(values[0]);
+          const values = value.split(" ");
+          if (values.length >= 3) {
+            const width = values[0];
+            const style = values[1];
+            const color = values.slice(2).join(" ");
+
             const lineStyle =
-              values[1] === "solid"
-                ? intValue <= 1
-                  ? "thin"
-                  : intValue <= 2
-                    ? "medium"
-                    : "thick"
-                : values[1];
-            const color = ["black", "initial"].includes(values[2])
-              ? "#000000"
-              : values[2];
-            parsedValues = [lineStyle, color];
+              BORDER_STYLE_MAP[style] ||
+              (parsePtOrPxValue(width) <= 1
+                ? "thin"
+                : parsePtOrPxValue(width) <= 2
+                  ? "medium"
+                  : "thick");
+
+            const parsedValues = [lineStyle, color];
+
             if (property === "border") {
               borderStyles = {
                 top: parsedValues,
@@ -144,68 +184,64 @@ const parseBorderProperties = (styles) => {
   };
   const others = {};
   const parsedBorders = {};
+
+  // 合并相同边的样式
+  const mergeBorderStyles = (side) => {
+    const value = border[`border-${side}`];
+    if (value.width || value.style || value.color) {
+      const width = value.width || "1px";
+      const style = value.style || "solid";
+      const color = value.color || "#000000";
+      return `${width} ${style} ${color}`;
+    }
+    return null;
+  };
+
   for (const key in styles) {
     if (styles.hasOwnProperty(key)) {
       const parts = key.split("-");
-      if (
-        parts.length === 3 &&
-        parts[0] === "border" &&
-        ["style", "width", "color"].includes(parts[2])
-      ) {
+      // 处理完整的border属性
+      if (key === "border") {
+        const values = styles[key].split(" ");
+        if (values.length >= 3) {
+          const [width, style, color] = values;
+          ["top", "right", "bottom", "left"].forEach((side) => {
+            border[`border-${side}`] = { width, style, color };
+          });
+        }
+        continue;
+      }
+
+      // 处理单边属性
+      if (parts[0] === "border" && parts.length === 2) {
         const side = parts[1];
-        const propertyName = "border-" + side;
-        if (!border[propertyName]) {
-          border[propertyName] = {};
+        if (border[`border-${side}`]) {
+          const values = styles[key].split(" ");
+          if (values.length >= 3) {
+            const [width, style, color] = values;
+            border[`border-${side}`] = { width, style, color };
+          }
         }
-        border[propertyName][parts[2]] = styles[key];
-      } else if (
-        parts.length === 2 &&
-        parts[0] === "border" &&
-        ["style", "width", "color"].includes(parts[1])
-      ) {
-        let value = [];
-        if (parts[1] === "color" && styles[key]?.includes("rgb")) {
-          value = styles[key].replaceAll(" ", "").split(")");
-          value.pop();
-          value = value.map((val) => `${val})`);
-        } else {
-          value = styles[key]?.split(" ");
+      }
+      // 处理分开的边框属性
+      else if (parts.length === 3 && parts[0] === "border") {
+        const side = parts[1];
+        const prop = parts[2];
+        if (!border[`border-${side}`]) {
+          border[`border-${side}`] = {};
         }
-        if (value.length === 1) {
-          border[`border-top`][parts[1]] = value[0];
-          border[`border-bottom`][parts[1]] = value[0];
-          border[`border-left`][parts[1]] = value[0];
-          border[`border-right`][parts[1]] = value[0];
-        } else if (value.length === 2) {
-          border[`border-top`][parts[1]] = value[0];
-          border[`border-bottom`][parts[1]] = value[0];
-          border[`border-left`][parts[1]] = value[1];
-          border[`border-right`][parts[1]] = value[1];
-        } else if (value.length === 3) {
-          border[`border-top`][parts[1]] = value[0];
-          border[`border-right`][parts[1]] = value[1];
-          border[`border-left`][parts[1]] = value[1];
-          border[`border-bottom`][parts[1]] = value[2];
-        } else if (value.length === 4) {
-          border[`border-top`][parts[1]] = value[0];
-          border[`border-right`][parts[1]] = value[1];
-          border[`border-bottom`][parts[1]] = value[2];
-          border[`border-left`][parts[1]] = value[3];
-        }
+        border[`border-${side}`][prop] = styles[key];
       } else {
         others[key] = styles[key];
       }
     }
   }
 
-  Object.keys(border).forEach((key) => {
-    const value = border[key];
-    if (Object.keys(value).length === 3) {
-      const parsedValue =
-        value["width"] === "0px"
-          ? "none"
-          : `${value["width"]} ${value["style"]} ${value["color"]}`;
-      parsedBorders[key] = parsedValue;
+  // 处理每个边的样式
+  ["top", "right", "bottom", "left"].forEach((side) => {
+    const borderStyle = mergeBorderStyles(side);
+    if (borderStyle) {
+      parsedBorders[`border-${side}`] = borderStyle;
     }
   });
 
@@ -356,13 +392,15 @@ const parseExcelStyleToHTML = (styling, theme) => {
             case "bottom":
             case "right":
             case "left":
-              if (value?.style && value.rgb)
+              if (value?.style) {
+                const borderStyle = EXCEL_TO_CSS_BORDER[value.style] || "solid";
+                const borderColor =
+                  value.rgb ||
+                  (value?.color?.indexed
+                    ? INDEXED_COLORS[value.color.indexed]
+                    : "#000000");
                 parsedStyles[`border-${side}`] =
-                  `1px ${value.style} ${value.rgb};`;
-              else if (value?.color?.indexed) {
-                const color = INDEXED_COLORS[value.color.indexed] ?? "#000000";
-                parsedStyles[`border-${side}`] =
-                  `1px ${value.style ?? "solid"} ${color}`;
+                  `1px ${borderStyle} ${borderColor}`;
               }
               break;
           }
@@ -522,46 +560,89 @@ const stox = (wb) => {
       range: range,
     });
 
+    // 预处理所有单元格样式
+    const processedStyles = {};
+    Object.keys(ws).forEach(cellRef => {
+      if(cellRef[0] !== '!') { // 跳过特殊属性
+        const cell = ws[cellRef];
+        if(cell.s) {
+          processedStyles[cellRef] = {
+            style: cell.s,
+            type: cell.t
+          };
+        }
+      }
+    });
+
     aoa.forEach(function (r, i) {
       const cells = {};
       let rowHeight = null;
       r.forEach(function (c, j) {
-        cells[j] = { text: c || String(c) };
         const cellRef = XLSX.utils.encode_cell({ r: i, c: j });
-        const formattedText = ws[cellRef].w ?? "";
-        cells[j].formattedText = formattedText;
-        const cellStyle = ws[cellRef].s ?? "";
-        const cellMeta = ws[cellRef].metadata;
-        const cellType = ws[cellRef].t;
-        const parsedData = parseCssToXDataStyles(cellStyle, cellType);
-        const parsedCellStyles = parsedData.parsedStyles;
-        const sheetConfig = parsedData.sheetConfig;
-        if (!gridStatus && sheetConfig?.gridLine) {
-          gridStatus = true;
-        }
-        const dimensions = parsedCellStyles.dimensions;
-        delete parsedCellStyles.dimensions;
-        if (Object.keys(parsedCellStyles).length) {
-          const length = o.styles.push(parsedCellStyles);
-          cells[j].style = length - 1;
+        const cell = ws[cellRef] || {};
+
+        // 初始化单元格
+        cells[j] = { text: c || '' };
+        
+        // 检查是否有预处理的样式
+        const processedStyle = processedStyles[cellRef];
+        if (processedStyle) {
+          const parsedData = parseCssToXDataStyles(processedStyle.style, processedStyle.type);
+          const parsedCellStyles = parsedData.parsedStyles;
+          const sheetConfig = parsedData.sheetConfig;
+          
+          if (!gridStatus && sheetConfig?.gridLine) {
+            gridStatus = true;
+          }
+
+          // 处理尺寸
+          const dimensions = parsedCellStyles.dimensions;
+          delete parsedCellStyles.dimensions;
+
+          if (Object.keys(parsedCellStyles).length) {
+            const length = o.styles.push(parsedCellStyles);
+            cells[j].style = length - 1;
+          }
+
+          if (dimensions?.height) rowHeight = dimensions.height;
+          if (dimensions?.width) {
+            o.cols[j] = { width: dimensions.width };
+          }
         }
 
-        if (ws[cellRef]?.f && ws[cellRef].f !== "") {
-          cells[j].text = "=" + ws[cellRef].f;
+        // 其他处理
+        if (cell.w !== undefined) {
+          cells[j].formattedText = cell.w;
         }
-
-        if (dimensions?.height) rowHeight = dimensions.height;
-        if (dimensions?.width) {
-          o.cols[j] = { width: dimensions.width };
+        if (cell?.f) {
+          cells[j].text = "=" + cell.f;
         }
-        if (cellMeta) {
-          cells[j].cellMeta = cellMeta;
+        if (cell.metadata) {
+          cells[j].cellMeta = cell.metadata;
         }
       });
+
+      // 为每列添加空单元格
+      for(let j = 0; j <= range.e.c; j++) {
+        if (!cells[j]) {
+          const cellRef = XLSX.utils.encode_cell({ r: i, c: j });
+          const processedStyle = processedStyles[cellRef];
+          if (processedStyle) {
+            const parsedData = parseCssToXDataStyles(processedStyle.style, processedStyle.type);
+            const parsedCellStyles = parsedData.parsedStyles;
+            delete parsedCellStyles.dimensions;
+            if (Object.keys(parsedCellStyles).length) {
+              cells[j] = { text: '' };
+              const length = o.styles.push(parsedCellStyles);
+              cells[j].style = length - 1;
+            }
+          }
+        }
+      }
+
       if (rowHeight) o.rows[i] = { cells: cells, height: rowHeight };
       else o.rows[i] = { cells: cells };
     });
-    o.rows.len = aoa.length;
 
     o.merges = [];
     (ws["!merges"] || []).forEach(function (merge, i) {

@@ -1456,3 +1456,41 @@ form fieldset {
 .@{css-prefix}-comment-cancel-button:hover {
   background-color: #b0b0b0;
 }
+
+.@{css-prefix}-sheet-arrow {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  cursor: pointer;
+  user-select: none;
+  color: #666;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.05); 
+  }
+
+  &.left {
+    border-right: 1px solid #e0e2e4;
+  }
+
+  &.right {
+    border-left: 1px solid #e0e2e4;
+  }
+}
+
+.@{css-prefix}-sheet-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+  
+  &::-webkit-scrollbar {
+    height: 0;  // 隐藏滚动条但保留功能
+  }
+
+  .@{css-prefix}-menu {
+    white-space: nowrap;
+    display: inline-flex;
+  }
+}
