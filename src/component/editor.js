@@ -338,7 +338,12 @@ export default class Editor {
   }
 
   setCell(cell, validator) {
-    if (cell && cell.editable === false) return;
+    // 不可编辑的单元格直接返回,不显示编辑器
+    if (cell && cell.editable === false) {
+      this.el.hide();
+      return;
+    }
+    
     const editValueFormatter = this.options.editValueFormatter;
     const { el, datepicker, suggest } = this;
     el.show();

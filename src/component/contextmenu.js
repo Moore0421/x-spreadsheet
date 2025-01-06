@@ -224,6 +224,15 @@ export default class ContextMenu {
   }
 
   setPosition(x, y) {
+    const { sheet } = this;
+    const cell = sheet.data.getCell(sheet.data.selector.ri, sheet.data.selector.ci);
+    
+    // 如果单元格不可编辑,隐藏右键菜单
+    if (cell && cell.editable === false) {
+      this.hide();
+      return;
+    }
+
     this.lastCoordinate = { x, y };
     if (this.isHide) return;
     const { el } = this;

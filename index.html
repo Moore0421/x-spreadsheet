@@ -87,7 +87,7 @@
             len: 70, // 设置为50行
           },
           col: {
-            len: 53, // 设置到BA列(从A到BA共53列)
+            len: 80, // 设置到80列
           },
           extendToolbar: {
             left: [
@@ -95,7 +95,8 @@
                 tip: "保存",
                 icon: saveIcon,
                 onClick: (data, sheet) => {
-                  console.log("click save button：", data, sheet);
+                  const allData = xs.getData();
+                  console.log("保存所有sheet数据:", allData);
                 },
               },
             ],

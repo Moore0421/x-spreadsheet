@@ -301,7 +301,47 @@ export default class Toolbar {
 
   reset() {
     if (this.isHide) return;
+    
     const { data } = this;
+    const cell = data.getSelectedCell();
+
+    // 如果单元格不可编辑,禁用所有按钮的交互
+    if (cell?.editable === false) {
+      this.btns.children().forEach(btn => {
+        if (btn.el) {
+          // 处理元素对象
+          btn.el.css('pointer-events', 'none');
+          btn.el.css('opacity', '0.5');
+        } else if (typeof btn.css === 'function') {
+          // 处理具有css方法的对象
+          btn.css('pointer-events', 'none');
+          btn.css('opacity', '0.5');
+        } else if (btn.style) {
+          // 处理DOM元素
+          btn.style.pointerEvents = 'none';
+          btn.style.opacity = '0.5';
+        }
+      });
+      return;
+    }
+
+    // 恢复按钮交互
+    this.btns.children().forEach(btn => {
+      if (btn.el) {
+        // 处理元素对象
+        btn.el.css('pointer-events', '');
+        btn.el.css('opacity', '');
+      } else if (typeof btn.css === 'function') {
+        // 处理具有css方法的对象
+        btn.css('pointer-events', '');
+        btn.css('opacity', '');
+      } else if (btn.style) {
+        // 处理DOM元素
+        btn.style.pointerEvents = '';
+        btn.style.opacity = '';
+      }
+    });
+
     const { cellConfig = {} } = data;
     const { cellButtons = [] } = cellConfig;
     const style = data.getSelectedCellStyle();
