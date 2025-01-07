@@ -19,22 +19,22 @@ export default class Import extends IconItem {
     super.click(false);
 
     const InputFormField = new FormField(
-      new FormInput("200px", "Select File")
+      new FormInput("200px", "选择文件") // 汉化"Select File"
         .attr("type", "file")
         .attr("accept", ".xls,.xlsx"),
       {
         required: true,
       },
-      "Select File:",
+      "选择文件:", // 汉化"Select File:"
       100
     );
 
     const SelectFormField = new FormField(
       new FormSelect(true, "", [], "216px"),
       {
-        required: true,
+        required: true, 
       },
-      "Select Sheets:",
+      "选择工作表:", // 汉化"Select Sheets:"
       100
     );
 
@@ -50,15 +50,15 @@ export default class Import extends IconItem {
     ).children(SelectFormField.el);
 
     const Buttons = h("div", `${cssPrefix}-buttons`).children(
-      new Button("cancel").on("click", () => {
+      new Button("cancel").on("click", () => { 
         this.file = null;
         modal.hide();
       }),
-      new Button("import", "primary").on("click", () => {
+      new Button("import", "primary").on("click", () => { 
         const selectedSheets = SelectFormField.input.selectedItems ?? [];
         if (!this.file || selectedSheets.length < 1) {
           modal.hide();
-          xtoast("Import Error!", "Please select the file", () => {
+          xtoast("导入错误!", "请选择文件", () => { // 汉化错误提示
             modal.show();
           });
           return;
@@ -94,7 +94,7 @@ export default class Import extends IconItem {
     });
 
     const modal = new Modal(
-      "Import",
+      "导入", // 汉化"Import"
       [InputFormFieldWrapper.el, SelectFormFieldWrapper.el, Buttons.el],
       "400px"
     );

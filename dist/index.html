@@ -13,11 +13,11 @@
     <!-- 数据 -->
     <script src="./data.js"></script>
     <script>
-      window.onload = function () {
+      window.onload = async function () {
         if (typeof x_spreadsheet !== "undefined") {
           // 使用正确的语言代码 'zh-cn'
           x_spreadsheet.locale("zh-cn");
-          load();
+          await load();
         } else {
           console.error("x_spreadsheet not loaded");
         }
@@ -37,7 +37,52 @@
   <body>
     <div id="x-spreadsheet-demo" style="height: 100vh"></div>
     <script>
-      function load() {
+      // 获取URL参数方法
+      async function getUrlParam(name) {
+        var urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+      }
+
+      // 保存数据到服务器
+      async function saveToServer(data) {
+        try {
+          var tim = (await getUrlParam("id")) || 0;
+          var response = await fetch(
+            "http://localhost:3000/api/save/?id=" + tim,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(data),
+            }
+          );
+          var result = await response.json();
+          if (result.success) {
+            alert("保存成功!");
+          }
+        } catch (error) {
+          console.error("保存失败:", error);
+          alert("保存失败!");
+        }
+      }
+
+      // 从服务器获取数据
+      async function getDataFromServer() {
+        var id = (await getUrlParam("id")) || 0;
+        try {
+          var response = await fetch(
+            "http://localhost:3000/api/getData?id=" + id
+          );
+          return await response.json();
+        } catch (error) {
+          console.error("获取数据失败:", error);
+          return {};
+        }
+      }
+
+      // 初始化表格
+      async function load() {
         var saveIcon =
           "data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI/PjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+PHN2ZyB0PSIxNTc3MTc3MDkyOTg4IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjI2NzgiIHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeG1sbnM6eGxpbms9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkveGxpbmsiPjxkZWZzPjxzdHlsZSB0eXBlPSJ0ZXh0L2NzcyI+PC9zdHlsZT48L2RlZnM+PHBhdGggZD0iTTIxMy4zMzMzMzMgMTI4aDU5Ny4zMzMzMzRhODUuMzMzMzMzIDg1LjMzMzMzMyAwIDAgMSA4NS4zMzMzMzMgODUuMzMzMzMzdjU5Ny4zMzMzMzRhODUuMzMzMzMzIDg1LjMzMzMzMyAwIDAgMS04NS4zMzMzMzMgODUuMzMzMzMzSDIxMy4zMzMzMzNhODUuMzMzMzMzIDg1LjMzMzMzMyAwIDAgMS04NS4zMzMzMzMtODUuMzMzMzMzVjIxMy4zMzMzMzNhODUuMzMzMzMzIDg1LjMzMzMzMyAwIDAgMSA4NS4zMzMzMzMtODUuMzMzMzMzeiBtMzY2LjkzMzMzNCAxMjhoMzQuMTMzMzMzYTI1LjYgMjUuNiAwIDAgMSAyNS42IDI1LjZ2MTE5LjQ2NjY2N2EyNS42IDI1LjYgMCAwIDEtMjUuNiAyNS42aC0zNC4xMzMzMzNhMjUuNiAyNS42IDAgMCAxLTI1LjYtMjUuNlYyODEuNmEyNS42IDI1LjYgMCAwIDEgMjUuNi0yNS42ek0yMTMuMzMzMzMzIDIxMy4zMzMzMzN2NTk3LjMzMzMzNGg1OTcuMzMzMzM0VjIxMy4zMzMzMzNIMjEzLjMzMzMzM3ogbTEyOCAwdjI1NmgzNDEuMzMzMzM0VjIxMy4zMzMzMzNoODUuMzMzMzMzdjI5OC42NjY2NjdhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDAgMS00Mi42NjY2NjcgNDIuNjY2NjY3SDI5OC42NjY2NjdhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDAgMS00Mi42NjY2NjctNDIuNjY2NjY3VjIxMy4zMzMzMzNoODUuMzMzMzMzek0yNTYgMjEzLjMzMzMzM2g4NS4zMzMzMzMtODUuMzMzMzMzeiBtNDI2LjY2NjY2NyAwaDg1LjMzMzMzMy04NS4zMzMzMzN6IG0wIDU5Ny4zMzMzMzR2LTEyOEgzNDEuMzMzMzMzdjEyOEgyNTZ2LTE3MC42NjY2NjdhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDAgMSA0Mi42NjY2NjctNDIuNjY2NjY3aDQyNi42NjY2NjZhNDIuNjY2NjY3IDQyLjY2NjY2NyAwIDAgMSA0Mi42NjY2NjcgNDIuNjY2NjY3djE3MC42NjY2NjdoLTg1LjMzMzMzM3ogbTg1LjMzMzMzMyAwaC04NS4zMzMzMzMgODUuMzMzMzMzek0zNDEuMzMzMzMzIDgxMC42NjY2NjdIMjU2aDg1LjMzMzMzM3oiIHAtaWQ9IjI2NzkiIGZpbGw9IiMyYzJjMmMiPjwvcGF0aD48L3N2Zz4=";
         var previewEl = document.createElement("img");
@@ -46,7 +91,8 @@
         previewEl.width = 16;
         previewEl.height = 16;
 
-        // 然后再初始化电子表格
+        var serverData = await getDataFromServer();
+
         var xs = x_spreadsheet("#x-spreadsheet-demo", {
           showToolbar: true,
           showGrid: true,
@@ -62,9 +108,9 @@
               {
                 tip: "保存",
                 icon: saveIcon,
-                onClick: (data, sheet) => {
-                  const allData = xs.getData();
-                  console.log("保存所有sheet数据:", allData);
+                onClick: async (data, sheet) => {
+                  var allData = xs.getData();
+                  await saveToServer(allData);
                 },
               },
             ],
@@ -73,13 +119,13 @@
                 tip: "预览",
                 el: previewEl,
                 onClick: (data, sheet) => {
-                  console.log("click preview button：", data);
+                  console.log("预览", data);
                 },
               },
             ],
           },
         })
-          .loadData(data)
+          .loadData(Object.keys(serverData).length > 0 ? serverData : data)
           .change((cdata) => {});
 
         xs.on("cell-selected", (cell, ri, ci) => {})

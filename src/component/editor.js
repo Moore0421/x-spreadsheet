@@ -83,6 +83,23 @@ function inputEventHandler(evt) {
   const { suggest, textlineEl, validator, mention, trigger } = this;
   const { cell } = this;
   if (cell !== null) {
+    if (validator) {
+      // 如果是下拉列表类型
+      if (validator.type === 'list') {
+        // 只允许从下拉列表中选择,不允许直接输入
+        suggest.search(v);
+        return;
+      }
+      // 验证输入的内容
+      const [isValid] = validator.validate(v);
+      if (!isValid) {
+        // 输入无效时,恢复原来的值
+        evt.target.value = this.inputText; 
+        return;
+      }
+    }
+  }
+  if (cell !== null) {
     if (
       ("editable" in cell && cell.editable === true) ||
       cell.editable === undefined
