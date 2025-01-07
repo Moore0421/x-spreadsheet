@@ -1203,6 +1203,37 @@ form fieldset select {
 .x-spreadsheet-comment-cancel-button:hover {
   background-color: #b0b0b0;
 }
+.x-spreadsheet-sheet-arrow {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  cursor: pointer;
+  user-select: none;
+  color: #666;
+}
+.x-spreadsheet-sheet-arrow:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+.x-spreadsheet-sheet-arrow.left {
+  border-right: 1px solid #e0e2e4;
+}
+.x-spreadsheet-sheet-arrow.right {
+  border-left: 1px solid #e0e2e4;
+}
+.x-spreadsheet-sheet-scroll {
+  flex: 1;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+}
+.x-spreadsheet-sheet-scroll::-webkit-scrollbar {
+  height: 0;
+}
+.x-spreadsheet-sheet-scroll .x-spreadsheet-menu {
+  white-space: nowrap;
+  display: inline-flex;
+}
 
 
 /*# sourceMappingURL=xspreadsheet.css.map*/
