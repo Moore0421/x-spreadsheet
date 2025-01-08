@@ -235,23 +235,6 @@ export default class Bottombar {
   }
 
   deleteItem() {
-    const { activeEl, deleteEl } = this;
-    if (this.items.length > 1) {
-      const index = this.items.findIndex((it) => it === deleteEl);
-      this.items.splice(index, 1);
-      this.dataNames.splice(index, 1);
-      this.menuEl.removeChild(deleteEl.el);
-      this.moreEl.reset(this.dataNames);
-      if (activeEl === deleteEl) {
-        const [f] = this.items;
-        this.activeEl = f;
-        this.activeEl.toggle();
-        return [index, 0];
-      }
-      this.updateArrowsVisibility();
-      return [index, -1];
-    }
-    this.updateArrowsVisibility();
     return [-1];
   }
 
