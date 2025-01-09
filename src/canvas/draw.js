@@ -30,6 +30,9 @@ class DrawBox {
     this.borderBottom = null;
     this.borderLeft = null;
     this.iconCount = 0;
+    this.treeLevel = 0; // 添加树形层级属性
+    this.hasChildren = false; // 是否有子节点
+    this.expanded = false; // 是否展开
   }
 
   getIconCount() {
@@ -552,6 +555,40 @@ class Draw {
     ctx.fill();
     dtextcb();
     ctx.restore();
+  }
+
+  // 绘制树形结构图标
+  drawTreeIcon(draw) {
+    const { x, y, height } = this;
+    const indent = this.treeLevel * 20; // 每级缩进20像素
+    const iconSize = 9;
+    const iconX = x + indent;
+    const iconY = y + (height - iconSize) / 2;
+
+    if(this.hasChildren) {
+      // 绘制展开/折叠图标
+      draw.save()
+        .beginPath()
+        .strokeStyle('#666')
+        .lineWidth(1);
+
+      if(this.expanded) {
+        // 绘制展开状态的-号
+        draw.moveTo(iconX, iconY + iconSize/2)
+            .lineTo(iconX + iconSize, iconY + iconSize/2);
+      } else {
+        // 绘制折叠状态的+号
+        draw.moveTo(iconX, iconY + iconSize/2)
+            .lineTo(iconX + iconSize, iconY + iconSize/2)
+            .moveTo(iconX + iconSize/2, iconY)
+            .lineTo(iconX + iconSize/2, iconY + iconSize);
+      }
+      
+      draw.stroke()
+          .restore();
+    }
+
+    return indent + (this.hasChildren ? iconSize + 5 : 0);
   }
 }
 

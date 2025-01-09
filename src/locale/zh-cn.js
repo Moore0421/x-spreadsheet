@@ -54,6 +54,8 @@ export default {
     addComment: "添加评论",
     showComment: "显示评论",
     navigate: "定位到该单元格",
+    setRowId: '设置行ID',
+    inputRowId: '请输入行ID',
   },
   print: {
     size: "纸张大小",

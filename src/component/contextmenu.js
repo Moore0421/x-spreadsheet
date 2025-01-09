@@ -36,6 +36,8 @@ const menuItems = [
   { key: "divider" },
   { key: "cell-editable", title: tf("contextmenu.celleditable") },
   { key: "cell-non-editable", title: tf("contextmenu.cellnoneditable") },
+  { key: "divider" },
+  { key: "set-row-id", title: tf("contextmenu.setRowId") },
 ];
 
 function buildSubMenuItems(items) {
@@ -50,10 +52,14 @@ function buildMenuItem(item) {
   const ele = h("div", `${cssPrefix}-item`)
     .on("click", () => {
       const range = this.sheet.selector.range;
-      this.sheet?.trigger?.("context-menu-action", {
-        action: [item.key],
-        range,
-      });
+      if (item.key === "set-row-id") {
+        this.sheet.data.handleSetRowId();
+      } else {
+        this.sheet?.trigger?.("context-menu-action", {
+          action: [item.key],
+          range,
+        });
+      }
       this.itemClick(item.key);
       this.hide();
     })
@@ -225,6 +231,7 @@ export default class ContextMenu {
 
   setPosition(x, y) {
     const { sheet } = this;
+    const { selector } = sheet.data;
     const cell = sheet.data.getCell(sheet.data.selector.ri, sheet.data.selector.ci);
     
     // 如果单元格不可编辑,隐藏右键菜单
@@ -255,5 +262,18 @@ export default class ContextMenu {
         .css("bottom", "auto");
     }
     bindClickoutside(el);
+    
+    // 只在选中整行时显示设置行ID选项
+    const setRowIdEl = this.menuItems.find(it => it.attr("data-key") === "set-row-id");
+    if (setRowIdEl) {
+      const { sri, eri, sci, eci } = selector.range;
+      // 检查是否只选中了一行
+      const isWholeRow = sci === 0 && eci === sheet.data.cols.len - 1 && sri === eri;
+      if (isWholeRow) {
+        setRowIdEl.show();
+      } else {
+        setRowIdEl.hide();
+      }
+    }
   }
 }

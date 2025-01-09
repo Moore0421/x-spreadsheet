@@ -422,9 +422,59 @@ class Rows {
     this._ = d;
   }
 
+  // 添加通过id获取行号的方法
+  getRowIndexById(id) {
+    for (let ri in this._) {
+      if (this._[ri].id === id) {
+        return parseInt(ri);
+      }
+    }
+    return -1;
+  }
+
+  // 添加设置行id的方法
+  setRowId(ri, id) {
+    const row = this.getOrNew(ri);
+    if (!row.id) {
+      row.id = id;
+    } else {
+      row.id = id;
+    }
+  }
+
+  // 添加获取行id的方法
+  getRowId(ri) {
+    const row = this._[ri];
+    return row ? row.id : null;
+  }
+
   getData() {
-    const { len } = this;
-    return Object.assign({ len }, this._);
+    const data = {};
+    Object.entries(this._).forEach(([ri, row]) => {
+      if (row.id || Object.keys(row.cells).length > 0 || row.height !== this.height) {
+        data[ri] = {
+          cells: row.cells,
+          height: row.height,
+          id: row.id
+        };
+      }
+    });
+    data.len = Object.keys(data).length;
+    return data;
+  }
+
+  setData(data) {
+    if (data.len) {
+      this.len = data.len;
+    }
+    Object.entries(data).forEach(([ri, row]) => {
+      if (ri !== 'len') {
+        const r = this.getOrNew(parseInt(ri, 10));
+        r.cells = row.cells || {};
+        if (row.height) r.height = row.height;
+        if (row.id) r.id = row.id; // 从导入数据中恢复id
+      }
+    });
   }
 }
 

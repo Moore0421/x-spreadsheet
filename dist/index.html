@@ -107,7 +107,7 @@
       }
 
       // 上传分片
-      async function uploadChunk(chunk, chunkIndex, totalChunks, id) {
+      async function uploadChunk(chunk, chunkIndex, totalChunks, id, pure) {
         // 包装数据为对象格式
         const payload = {
           data: chunk,
@@ -118,7 +118,9 @@
             "&chunkIndex=" +
             chunkIndex +
             "&totalChunks=" +
-            totalChunks,
+            totalChunks +
+            "&pure=" +
+            pure,
           {
             method: "POST",
             headers: {
@@ -131,12 +133,14 @@
       }
 
       // 合并分片
-      async function mergeChunks(id, totalChunks) {
+      async function mergeChunks(id, totalChunks, pure) {
         const response = await fetch(
           "http://119.91.209.28:3000/api/merge-chunks?id=" +
             id +
             "&totalChunks=" +
-            totalChunks,
+            totalChunks +
+            "&pure=" +
+            pure,
           {
             method: "POST",
           }
@@ -145,7 +149,7 @@
       }
 
       // 保存数据到服务器
-      async function saveToServer(data) {
+      async function saveToServer(data, pure) {
         try {
           const tim = (await getUrlParam("id")) || 0;
           const chunkSize = 256 * 256; // 256KB
@@ -167,14 +171,14 @@
             const chunk = jsonData.slice(i * chunkSize, (i + 1) * chunkSize);
             progressDiv.textContent =
               "正在上传 " + (i + 1) + " / " + totalChunks;
-            const result = await uploadChunk(chunk, i, totalChunks, tim);
+            const result = await uploadChunk(chunk, i, totalChunks, tim, pure);
             if (!result.success) {
               progressDiv.textContent = "分片上传失败";
             }
           }
           // 请求合并分片
           progressDiv.textContent = "正在合并文件...";
-          const result = await mergeChunks(tim, totalChunks);
+          const result = await mergeChunks(tim, totalChunks, pure);
           if (result.success) {
             progressDiv.textContent = "保存成功";
             await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -217,6 +221,46 @@
 
       let xs = null;
 
+      function getPureData() {
+        const data = xs.getData();
+        const pureData = [];
+
+        // 遍历所有sheet
+        data.forEach((sheet) => {
+          const pureSheet = {
+            name: sheet.name,
+            rows: {}
+          };
+
+          // 只保留单元格的值
+          if (sheet.rows) {
+            Object.keys(sheet.rows).forEach((rowKey) => {
+              const row = sheet.rows[rowKey];
+              if (row.cells) {
+                pureSheet.rows[rowKey] = {
+                  cells: {}
+                };
+                Object.keys(row.cells).forEach((cellKey) => {
+                  const cell = row.cells[cellKey];
+                  if (cell.text) {
+                    pureSheet.rows[rowKey].cells[cellKey] = {
+                      text: cell.text
+                    };
+                  }
+                });
+              }
+            });
+          }
+
+          // 只有当表格有数据时才添加到结果中
+          if (Object.keys(pureSheet.rows).length > 0) {
+            pureData.push(pureSheet);
+          }
+        });
+
+        return pureData;
+      }
+
       // 异步加载剩余表格
       async function loadRemainingSheets(id, totalCount, sheets) {
         let allSheets = [...sheets];
@@ -257,9 +301,6 @@
           showToolbar: true,
           showGrid: true,
           showBottomBar: true,
-          row: {
-            len: 70, // 设置为70行
-          },
           col: {
             len: 80, // 设置到80列
           },
@@ -270,7 +311,15 @@
                 icon: saveIcon,
                 onClick: async (data, sheet) => {
                   var allData = xs.getData();
-                  await saveToServer(allData);
+                  await saveToServer(allData, false);
+                },
+              },
+              {
+                tip: "保存纯数据",
+                icon: saveIcon,
+                onClick: async (data, sheet) => {
+                  var pureData = getPureData();
+                  await saveToServer(pureData, true);
                 },
               },
             ],
@@ -287,6 +336,9 @@
         })
           .loadData(Object.keys(serverData).length > 0 ? serverData : data)
           .change((cdata) => {});
+        if (Object.keys(serverData).length === 0) {
+          hideLoading();
+        }
         xs.on("cell-selected", (cell, ri, ci) => {})
           .on("cell-edited", (text, ri, ci) => {})
           .on("pasted-clipboard", (data) => {})

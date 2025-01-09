@@ -34,6 +34,7 @@ import {
 import { getFontSizePxByPt } from "./font";
 import { getDrawBox } from "../component/table";
 import { npx } from "../canvas/draw";
+import RowIdModal from "../component/toolbar/setting_row_id";
 
 // private methods
 /*
@@ -1792,4 +1793,42 @@ export default class DataProxy {
       });
     }
   }
+
+  setRowId(ri, id) {
+    this.changeData(() => {
+      this.rows.setRowId(ri, id);
+    });
+  }
+
+  getRowId(ri) {
+    return this.rows.getRowId(ri);
+  }
+  
+  getRowByIndex(ri) {
+    return this.rows._[ri];
+  }
+
+  getRowIndexById(id) {
+    return this.rows.getRowIndexById(id);
+  }
+
+  getRowDataById(id) {
+    return this.rows.getRowDataById(id);
+  }
+
+  // 处理右键菜单中设置行ID的动作
+  handleSetRowId() {
+    const { selector } = this;
+    const { sri } = selector.range;
+    const currentId = this.getRowId(sri) || '';
+    
+    const modal = new RowIdModal();
+    modal.show((newId) => {
+      if (newId !== null && newId !== '') {
+        this.setRowId(sri, newId);
+      }
+    }, currentId);  // 传入当前ID作为默认值
+  }
+  
+  
 }

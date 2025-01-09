@@ -24,8 +24,8 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 // 修改 getFileName 方法
-function getFileName(id) {
-  const fileName = id ? `spreadsheet-data-${id}.json` : "spreadsheet-data.json";
+function getFileName(id, pure) {
+  const fileName = pure ? `spreadsheet-data-pure-${id}.json` : `spreadsheet-data-${id}.json`;
   return path.join(DATA_DIR, fileName);
 }
 
@@ -56,10 +56,10 @@ app.post("/api/chunk-upload", (req, res) => {
 
 // 合并分片
 app.post("/api/merge-chunks", (req, res) => {
-  const { id, totalChunks } = req.query;
+  const { id, totalChunks, pure } = req.query;
   const chunksCount = parseInt(totalChunks, 10);
   const tempDir = path.join(__dirname, "temp");
-  const finalPath = getFileName(id);
+  const finalPath = getFileName(id, pure === 'true');
   let rawData = "";
 
   try {
@@ -98,7 +98,8 @@ app.post("/api/merge-chunks", (req, res) => {
 // 获取表格总数
 app.get("/api/getSheetCount", (req, res) => {
   const { id } = req.query;
-  const fileName = getFileName(id);
+  const fileName = getFileName(id, false);
+  console.log("fileName", fileName);
 
   try {
     if (fs.existsSync(fileName)) {
@@ -118,7 +119,7 @@ app.get("/api/getSheetCount", (req, res) => {
 // 获取单个表格数据
 app.get("/api/getSheet", (req, res) => {
   const { id, index } = req.query;
-  const fileName = getFileName(id);
+  const fileName = getFileName(id, false);
 
   try {
     if (fs.existsSync(fileName)) {
