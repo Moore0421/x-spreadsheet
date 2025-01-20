@@ -8,6 +8,25 @@ import { locale } from "./locale/locale";
 import "./index.less";
 import { AVAILABLE_FEATURES, SHEET_TO_CELL_REF_REGEX } from "./constants";
 import { deepClone, getNewSheetName, stox } from "./utils";
+import  ExcelExport from "./component/excel-export";
+
+// 添加中文字体映射
+const FONT_MAP = {
+  '宋体': 'SimSun',
+  '黑体': 'SimHei',
+  '微软雅黑': 'Microsoft YaHei',
+  '楷体': 'KaiTi',
+  '仿宋': 'FangSong',
+  '新宋体': 'NSimSun',
+  '等线': 'DengXian',
+  '华文楷体': 'STKaiti',
+  '华文宋体': 'STSong',
+  '华文仿宋': 'STFangsong',
+  '华文中宋': 'STZhongsong',
+  '华文黑体': 'STHeiti',
+  '方正舒体': 'FZShuTi',
+  '方正姚体': 'FZYaoti'
+};
 
 class Spreadsheet {
   constructor(selectors, options = {}) {
@@ -279,6 +298,78 @@ class Spreadsheet {
 
   selectCellsAndFocus(range) {
     this.sheet.selectCellsAndFocus(range);
+  }
+
+  exportExcel() {
+    const exportData = this.datas.map(sheet => {
+      const processedData = {
+        name: sheet.name,
+        rows: {},
+        cols: sheet.cols,
+        styles: {},
+        merges: [],
+        sheetConfig: sheet.sheetConfig || {}
+      };
+  
+      // 处理样式
+      if (sheet.styles) {
+        Object.entries(sheet.styles).forEach(([key, style]) => {
+          processedData.styles[key] = {
+            ...style,
+            // 转换中文字体名称
+            font: style.font ? {
+              ...style.font,
+              name: FONT_MAP[style.font.name] || style.font.name || 'Arial'
+            } : undefined,
+            // 添加其他样式属性
+            border: style.border,
+            bgcolor: style.bgcolor,
+            color: style.color,
+            align: style.align,
+            valign: style.valign,
+            textwrap: style.textwrap,
+            // 确保正确传递文本装饰属性
+            textDecoration: style.textDecoration || style.font?.textDecoration
+          };
+        });
+      }
+
+      // 处理行数据
+      if (sheet.rows) {
+        const rowsData = sheet.rows.getData();
+        Object.entries(rowsData).forEach(([rowIndex, row]) => {
+          if (row && row.cells) {
+            processedData.rows[rowIndex] = {
+              cells: {},
+              height: row.height
+            };
+
+            Object.entries(row.cells).forEach(([colIndex, cell]) => {
+              if (cell) {
+                processedData.rows[rowIndex].cells[colIndex] = {
+                  text: cell.text,
+                  style: cell.style,
+                  merge: cell.merge,
+                  formattedText: cell.formattedText
+                };
+              }
+            });
+          }
+        });
+      }
+
+      // 处理合并单元格
+      if (sheet.merges) {
+        Object.entries(sheet.merges).forEach(([key, range]) => {
+          processedData.merges.push(range);
+        });
+      }
+
+      return processedData;
+    });
+
+    console.log('Processed export data:', exportData); // 调试用
+    ExcelExport(exportData);
   }
 }
 

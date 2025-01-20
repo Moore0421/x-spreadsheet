@@ -1829,6 +1829,4 @@ export default class DataProxy {
       }
     }, currentId);  // 传入当前ID作为默认值
   }
-  
-  
 }
