@@ -82,6 +82,7 @@ function formulaProgress() {
 }
 
 function selectorSet(multiple, ri, ci, indexesUpdated = true, moving = false) {
+  console.log('selectorSet:', 'multiple:', multiple, 'ri:', ri, 'ci:', ci, 'indexesUpdated:', indexesUpdated, 'moving:', moving);
   const { table, selector, toolbar, data, contextMenu, editor } = this;
   const cell = data.getCell(ri, ci);
   if (multiple) {
@@ -539,31 +540,52 @@ function colResizerFinished(cRect, distance) {
 }
 
 function dataSetCellText(text, state = "finished") {
-  const { data, table, editor } = this;
-  const trigger = data?.settings?.mentionProgress?.trigger;
-  if (data.settings.mode === "read") return;
+  console.log('dataSetCellText:', 'text:', text, 'state:', state);
+  const {
+    data,
+    selector,
+    editor,
+    contextMenu,
+    autoFilter,
+    sortFilter,
+  } = this;
+  const { ri, ci } = data.selector;
+  if (!data.selector || ri === undefined || ci === undefined) {
+    console.warn('dataSetCellText: data.selector, ri 或 ci 无效', data.selector, ri, ci);
+    return;
+  }
+  if (ri === -1 || ci === -1) return;
+  const trigger =
+    this.options.formula && this.options.formula.trigger
+      ? this.options.formula.trigger
+      : "$";
+  // const cell = data.getCell(ri, ci);
+
   const inputText = editor.inputText;
   if (editor.formulaCell && state === "finished") {
     const { ri, ci } = editor.formulaCell;
+    console.log('dataSetCellText 调用 data.setFormulaCellText (formulaCell):', 'text:', inputText, 'ri:', ri, 'ci:', ci, 'state:', state);
     data.setFormulaCellText(inputText, ri, ci, state);
     this.trigger("cell-edited", inputText, ri, ci);
     this.trigger("cell-edit-finished", text, ri, ci);
     editor.setFormulaCell(null);
   } else if (state === "finished" && text?.trim?.().startsWith(trigger)) {
+    console.log('dataSetCellText 调用 data.setFormulaCellText (trigger):', 'text:', inputText, 'ri:', data.selector.ri, 'ci:', data.selector.ci, 'state:', state);
     const { ri, ci } = data.selector;
     data.setFormulaCellText(inputText, ri, ci, state);
     this.trigger("cell-edited", inputText, ri, ci);
     this.trigger("cell-edit-finished", text, ri, ci);
   } else if (!editor.formulaCell) {
-    data.setSelectedCellText(text, state);
-    const { ri, ci } = data.selector;
-    if (state === "finished") {
-      this.trigger("cell-edit-finished", text, ri, ci);
-      table.render();
-    } else {
-      this.trigger("cell-edited", text, ri, ci);
-    }
+    console.log('dataSetCellText 调用 data.setCellText:', 'text:', text, 'ri:', ri, 'ci:', ci, 'state:', state);
+    data.setCellText(text, ri, ci, state);
+    this.trigger("cell-edited", text, ri, ci);
+    this.trigger("cell-edit-finished", text, ri, ci);
   }
+  if (autoFilter && ri !== null && ri !== undefined && ci !== null && ci !== undefined && autoFilter.includes(ri, ci)) {
+    autoFilter.reload();
+    sortFilter.reload();
+  }
+  contextMenu.hide();
 }
 
 function insertDeleteRowColumn(type) {
@@ -723,6 +745,7 @@ function sheetInitEvents() {
     });
 
   selector.inputChange = (v) => {
+    console.log('editor.inputChange:', 'v:', v);
     dataSetCellText.call(this, v, "input");
     editorSet.call(this);
   };

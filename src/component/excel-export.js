@@ -123,11 +123,28 @@ function applyCellStyle(excelCell, cellStyle) {
  * 处理单元格合并
  */
 function getMergeRange(cell, rowIndex, colIndex) {
-  if (!cell.merge) return null;
+  if (!cell || !cell.merge) return null;
   const [rowSpan, colSpan] = cell.merge;
-  const startCell = `${String.fromCharCode(65 + parseInt(colIndex))}${parseInt(rowIndex) + 1}`;
-  const endCell = `${String.fromCharCode(65 + parseInt(colIndex) + colSpan)}${parseInt(rowIndex) + rowSpan + 1}`;
-  return `${startCell}:${endCell}`;
+  // 计算起始和结束位置
+  const startRow = parseInt(rowIndex) + 1;
+  const startCol = parseInt(colIndex) + 1;
+  const endRow = startRow + rowSpan;
+  const endCol = startCol + colSpan;
+  return {
+    startCell: { row: startRow, col: startCol },
+    endCell: { row: endRow, col: endCol },
+  };
+}
+
+// 添加辅助函数 - 将列号转换为Excel列字母
+function getExcelColName(n) {
+  let result = "";
+  while (n > 0) {
+    n--;
+    result = String.fromCharCode(65 + (n % 26)) + result;
+    n = Math.floor(n / 26);
+  }
+  return result;
 }
 
 /**
@@ -148,7 +165,8 @@ const ExcelExport = async function (datas) {
       if (sheet.cols) {
         Object.entries(sheet.cols).forEach(([colIndex, col]) => {
           if (col && col.width) {
-            worksheet.getColumn(parseInt(colIndex) + 1).width = col.width / 6;
+            // Excel列宽与像素的转换比例约为7.5
+            worksheet.getColumn(parseInt(colIndex) + 1).width = col.width / 7.5;
           }
         });
       }
@@ -162,39 +180,71 @@ const ExcelExport = async function (datas) {
 
           // 设置行高
           if (row.height) {
-            excelRow.height = row.height;
+            // Excel行高与像素的转换比例约为0.75
+            excelRow.height = row.height * 0.75;
           }
 
           // 处理单元格
           Object.entries(row.cells).forEach(([colIndex, cell]) => {
             if (!cell) return;
 
-            const excelCell = excelRow.getCell(parseInt(colIndex) + 1);
-
-            // 设置值
-            if (cell.text !== undefined) {
-              if (cell.text.startsWith("=")) {
-                excelCell.value = { formula: cell.text.substring(1) };
-              } else {
-                const numValue = Number(cell.text);
-                excelCell.value = isNaN(numValue) ? cell.text : numValue;
-              }
-            }
-
-            // 设置样式
-            if (cell.style !== undefined && sheet.styles) {
-              applyCellStyle(excelCell, sheet.styles[cell.style]);
-            }
-
             // 处理合并单元格
             if (cell.merge) {
-              const mergeRange = getMergeRange(cell, rowIndex, colIndex);
-              if (mergeRange) {
-                // 检查是否已经合并
-                const mergedCells = worksheet.mergeCells; // 使用 mergeCells 属性
-                if (!mergedCells.includes(mergeRange)) {
-                  worksheet.mergeCells(mergeRange);
+              const mergeInfo = getMergeRange(cell, rowIndex, colIndex);
+              if (mergeInfo) {
+                const { startCell, endCell } = mergeInfo;
+                const cellValue = cell.text || "";
+                // 先执行合并
+                worksheet.mergeCells(
+                  startCell.row,
+                  startCell.col,
+                  endCell.row,
+                  endCell.col
+                );
+                // 获取Excel格式的单元格引用并设置值和样式
+                const cellRef = `${getExcelColName(startCell.col)}${startCell.row};`;
+                const targetCell = worksheet.getCell(cellRef);
+                // 确保正确设置值
+                if (cellValue.startsWith("=")) {
+                  targetCell.value = { formula: cellValue.substring(1) };
+                } else {
+                  const numValue = Number(cellValue);
+                  targetCell.value = isNaN(numValue) ? cellValue : numValue;
                 }
+                // 设置样式
+                targetCell.alignment = {
+                  vertical: "middle",
+                  horizontal: "center",
+                };
+                if (cell.style !== undefined && sheet.styles) {
+                  applyCellStyle(targetCell, sheet.styles[cell.style]);
+                }
+              }
+            } else {
+              const excelCell = excelRow.getCell(parseInt(colIndex) + 1);
+
+              // 设置值
+              if (cell.text !== undefined) {
+                if (cell.text.startsWith("=")) {
+                  excelCell.value = { formula: cell.text.substring(1) };
+                } else {
+                  // 处理普通文本
+                  if (
+                    cell.text === "" ||
+                    cell.text === null ||
+                    cell.text === undefined
+                  ) {
+                    excelCell.value = null;
+                  } else {
+                    const numValue = Number(cell.text);
+                    excelCell.value = isNaN(numValue) ? cell.text : numValue;
+                  }
+                }
+              }
+
+              // 设置样式
+              if (cell.style !== undefined && sheet.styles) {
+                applyCellStyle(excelCell, sheet.styles[cell.style]);
               }
             }
           });

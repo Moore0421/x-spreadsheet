@@ -562,13 +562,14 @@ const stox = (wb) => {
 
     // 预处理所有单元格样式
     const processedStyles = {};
-    Object.keys(ws).forEach(cellRef => {
-      if(cellRef[0] !== '!') { // 跳过特殊属性
+    Object.keys(ws).forEach((cellRef) => {
+      if (cellRef[0] !== "!") {
+        // 跳过特殊属性
         const cell = ws[cellRef];
-        if(cell.s) {
+        if (cell.s) {
           processedStyles[cellRef] = {
             style: cell.s,
-            type: cell.t
+            type: cell.t,
           };
         }
       }
@@ -582,15 +583,18 @@ const stox = (wb) => {
         const cell = ws[cellRef] || {};
 
         // 初始化单元格
-        cells[j] = { text: c || '' };
-        
+        cells[j] = { text: c || "" };
+
         // 检查是否有预处理的样式
         const processedStyle = processedStyles[cellRef];
         if (processedStyle) {
-          const parsedData = parseCssToXDataStyles(processedStyle.style, processedStyle.type);
+          const parsedData = parseCssToXDataStyles(
+            processedStyle.style,
+            processedStyle.type
+          );
           const parsedCellStyles = parsedData.parsedStyles;
           const sheetConfig = parsedData.sheetConfig;
-          
+
           if (!gridStatus && sheetConfig?.gridLine) {
             gridStatus = true;
           }
@@ -623,16 +627,19 @@ const stox = (wb) => {
       });
 
       // 为每列添加空单元格
-      for(let j = 0; j <= range.e.c; j++) {
+      for (let j = 0; j <= range.e.c; j++) {
         if (!cells[j]) {
           const cellRef = XLSX.utils.encode_cell({ r: i, c: j });
           const processedStyle = processedStyles[cellRef];
           if (processedStyle) {
-            const parsedData = parseCssToXDataStyles(processedStyle.style, processedStyle.type);
+            const parsedData = parseCssToXDataStyles(
+              processedStyle.style,
+              processedStyle.type
+            );
             const parsedCellStyles = parsedData.parsedStyles;
             delete parsedCellStyles.dimensions;
             if (Object.keys(parsedCellStyles).length) {
-              cells[j] = { text: '' };
+              cells[j] = { text: "" };
               const length = o.styles.push(parsedCellStyles);
               cells[j].style = length - 1;
             }
@@ -653,6 +660,12 @@ const stox = (wb) => {
       if (o.rows[merge.s.r].cells[merge.s.c] == null) {
         o.rows[merge.s.r].cells[merge.s.c] = {};
       }
+
+      // 获取合并单元格的值
+      const cellValue = ws[XLSX.utils.encode_cell(merge.s)]?.w;
+
+      // 设置合并单元格的文本值
+      o.rows[merge.s.r].cells[merge.s.c].text = cellValue || "";
 
       o.rows[merge.s.r].cells[merge.s.c].merge = [
         merge.e.r - merge.s.r,

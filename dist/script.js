@@ -21,7 +21,7 @@ async function uploadChunk(chunk, chunkIndex, totalChunks, id, pure) {
     data: chunk,
   };
   const response = await fetch(
-    "http://192.168.2.108:3000/api/chunk-upload?id=" +
+    "http://119.91.209.28:3000/api/chunk-upload?id=" +
       id +
       "&chunkIndex=" +
       chunkIndex +
@@ -43,7 +43,7 @@ async function uploadChunk(chunk, chunkIndex, totalChunks, id, pure) {
 // 合并分片
 async function mergeChunks(id, totalChunks, pure) {
   const response = await fetch(
-    "http://192.168.2.108:3000/api/merge-chunks?id=" +
+    "http://119.91.209.28:3000/api/merge-chunks?id=" +
       id +
       "&totalChunks=" +
       totalChunks +
@@ -71,7 +71,12 @@ progressDiv.style.borderRadius = "5px";
 async function saveToServer(data, pure) {
   try {
     const tim = (await getUrlParam("id")) || 0;
-    const chunkSize = 256 * 256; // 256KB
+    let chunkSize;
+    if (pure) {
+      chunkSize = 128 * 128;
+    } else {
+      chunkSize = 256 * 256; // 256KB
+    }
     const jsonData = JSON.stringify(data);
     const totalChunks = Math.ceil(jsonData.length / chunkSize);
     // 显示进度提示
@@ -104,14 +109,14 @@ async function getDataFromServer() {
   try {
     // 获取表格总数
     const countResponse = await fetch(
-      "http://192.168.2.108:3000/api/getSheetCount?id=" + id
+      "http://119.91.209.28:3000/api/getSheetCount?id=" + id
     );
     const { count, success } = await countResponse.json();
     if (!success) return {};
     // 先获取第一个表格
     document.getElementById("loading-num").textContent = "正在加载第1个表格";
     const firstSheetResponse = await fetch(
-      "http://192.168.2.108:3000/api/getSheet?id=" + id + "&index=0"
+      "http://119.91.209.28:3000/api/getSheet?id=" + id + "&index=0"
     );
     const firstSheetData = await firstSheetResponse.json();
     if (!firstSheetData.success) return {};
@@ -179,8 +184,6 @@ function getPureData() {
         const cell = row?.cells?.[colIndex];
         if (cell && cell.text !== undefined && cell.text !== null) {
           pureRow[`F${colIndex + 1}`] = cell.text;
-        } else {
-          pureRow[`F${colIndex + 1}`] = null;
         }
       }
       pureSheet.rows.push(pureRow);
@@ -202,7 +205,7 @@ async function loadRemainingSheets(id, totalCount, sheets) {
       document.getElementById("loading-num").textContent =
         "正在加载第" + (i + 1) + "个表格";
       const response = await fetch(
-        "http://192.168.2.108:3000/api/getSheet?id=" + id + "&index=" + i
+        "http://119.91.209.28:3000/api/getSheet?id=" + id + "&index=" + i
       );
       const data = await response.json();
       if (data.success) {
@@ -237,7 +240,7 @@ async function serverSyncPureData(file) {
     const formData = new FormData();
     formData.append("pureDataFile", file);
     const response = await fetch(
-      `http://192.168.2.108:3000/api/sync-data?id=${id}`,
+      `http://119.91.209.28:3000/api/sync-data?id=${id}`,
       {
         method: "POST",
         body: formData,
@@ -278,7 +281,9 @@ async function XSSyncPureData(file) {
     // 遍历每个sheet
     for (const pureSheet of pureData) {
       // 在当前数据中查找对应名称的sheet
-      const sheetIndex = allData.findIndex(sheet => sheet.name === pureSheet.name);
+      const sheetIndex = allData.findIndex(
+        (sheet) => sheet.name === pureSheet.name
+      );
       if (sheetIndex !== -1) {
         updatedSheets++;
         progressDiv.textContent = `正在更新表格 "${pureSheet.name}"...`;
@@ -296,12 +301,12 @@ async function XSSyncPureData(file) {
     }
 
     progressDiv.textContent = `更新完成，共更新了 ${updatedSheets} 个表格，${updatedCells} 个单元格`;
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     document.body.removeChild(progressDiv);
   } catch (error) {
     console.error("合并失败:", error);
     progressDiv.textContent = "合并失败: " + error.message;
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
     document.body.removeChild(progressDiv);
   }
 }
@@ -318,7 +323,7 @@ async function processBatch(pureSheet, sheetIndex) {
       updatedCells += await processRow(row, sheetIndex);
     }
     // 让事件循环有机会处理其他任务
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise((resolve) => setTimeout(resolve, 0));
   }
 
   return updatedCells;
@@ -348,15 +353,6 @@ async function processRow(row, sheetIndex) {
 
   return updatedCells;
 }
-
-// 监控内存使用情况
-function logMemoryUsage() {
-  const memory = performance.memory;
-  console.log(`使用的内存: ${memory.usedJSHeapSize / 1024 / 1024} MB`);
-}
-
-// 在合并过程中定期调用
-setInterval(logMemoryUsage, 1000); // 每秒记录一次内存使用情况
 
 // 初始化表格
 async function load() {
@@ -441,6 +437,7 @@ async function load() {
   })
     .loadData(Object.keys(serverData).length > 0 ? serverData : data)
     .change((_cdata) => {});
+  xs.initCustomFunctions();
   if (Object.keys(serverData).length === 0) {
     hideLoading();
   }

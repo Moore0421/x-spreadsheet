@@ -261,7 +261,7 @@ class Rows {
       if (nri >= sri) {
         nri += n;
         this.eachCells(ri, (ci, cell) => {
-          if (cell.text && cell.text[0] === "=") {
+          if (cell.text && cell.text[0] === "=" || cell.text && cell.text[0] === "$") {
             cell.text = replaceCellRefWithNew(
               cell.text,
               (word) => expr2expr(word, 0, n, (x, y) => y >= sri),
@@ -289,7 +289,7 @@ class Rows {
       } else if (ri > eri) {
         ndata[nri - n] = row;
         this.eachCells(ri, (ci, cell) => {
-          if (cell.text && cell.text[0] === "=") {
+          if (cell.text && cell.text[0] === "=" || cell.text && cell.text[0] === "$") {
             cell.text = replaceCellRefWithNew(
               cell.text,
               (word) => expr2expr(word, 0, -n, (x, y) => y > eri),
@@ -313,7 +313,7 @@ class Rows {
         let nci = parseInt(ci, 10);
         if (nci >= sci) {
           nci += n;
-          if (cell.text && cell.text[0] === "=") {
+          if (cell.text && cell.text[0] === "=" || cell.text && cell.text[0] === "$") {
             cell.text = replaceCellRefWithNew(
               cell.text,
               (word) => expr2expr(word, n, 0, (x) => x >= sci),
@@ -340,7 +340,7 @@ class Rows {
           rndata[nci] = cell;
         } else if (nci > eci) {
           rndata[nci - n] = cell;
-          if (cell.text && cell.text[0] === "=") {
+          if (cell.text && cell.text[0] === "=" || cell.text && cell.text[0] === "$") {
             cell.text = replaceCellRefWithNew(
               cell.text,
               (word) => expr2expr(word, -n, 0, (x) => x > eci),

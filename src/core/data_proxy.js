@@ -35,6 +35,7 @@ import { getFontSizePxByPt } from "./font";
 import { getDrawBox } from "../component/table";
 import { npx } from "../canvas/draw";
 import RowIdModal from "../component/toolbar/setting_row_id";
+import { evaluateDynamicExpression } from "./cell";
 
 // private methods
 /*
@@ -847,7 +848,7 @@ export default class DataProxy {
                   )
                 : DEFAULT_ROW_HEIGHT;
 
-                const rowHeight = value
+              const rowHeight = value
                 ? oldRowHeight > newRowHeight
                   ? oldRowHeight
                   : newRowHeight > DEFAULT_ROW_HEIGHT
@@ -879,33 +880,125 @@ export default class DataProxy {
 
   // state: input | finished
   setFormulaCellText(text, ri, ci, state = "input") {
+    console.log(
+      "setCellText:",
+      "text:",
+      text,
+      "ri:",
+      ri,
+      "ci:",
+      ci,
+      "state:",
+      state
+    ); // edit_9: 确认 setCellText 函数被调用
     const { autoFilter, rows } = this;
+
+    // 检查是否为动态函数表达式
+    const isDynamicExpression = text?.startsWith?.("$");
+
     if (state === "finished") {
-      const isFormula = text?.startsWith?.("=");
-      const updatedFormula =
-        text?.replace(EXTRACT_FORMULA_CELL_NAME_REGEX, (match) =>
-          match.toUpperCase()
-        ) ?? text;
-      rows.setCellProperty(ri, ci, "f", isFormula ? updatedFormula : text);
-      return;
-    }
-    let nri = ri;
-    if (this.unsortedRowMap.has(ri)) {
-      nri = this.unsortedRowMap.get(ri);
-    }
-    const oldCell = rows.getCell(nri, ci);
-    const oldText = oldCell ? oldCell.text : "";
-    this.setCellText(nri, ci, text, state);
-    // replace filter.value
-    if (autoFilter.active()) {
-      const filter = autoFilter.getFilter(ci);
-      if (filter) {
-        const vIndex = filter.value.findIndex((v) => v === oldText);
-        if (vIndex >= 0) {
-          filter.value.splice(vIndex, 1, text);
+      if (isDynamicExpression) {
+        // 保存原始$表达式
+        const cell = rows.getCellOrNew(ri, ci);
+        // 将原始表达式存储到 cell.formula
+        cell.formula = text;
+        // 记录单元格使用了动态表达式，便于双击时编辑原始表达式
+        cell.isDynamicExpression = true;
+
+        // 计算值并设置错误样式
+        console.log("检测到动态表达式:", text);
+        const value = evaluateDynamicExpression(text.substring(1));
+        console.log("动态表达式计算结果:", value);
+        if (
+          value &&
+          typeof value === "string" &&
+          value.startsWith("#") &&
+          value.endsWith("!")
+        ) {
+          // 这是一个错误值，应用错误样式
+          if (!cell.style) cell.style = {};
+          cell.style.color = "#FF0000"; // 红色错误文本
+          console.error("动态函数执行错误:", value);
+          const updatedFormula =
+            text?.replace(EXTRACT_FORMULA_CELL_NAME_REGEX, (match) =>
+              match.toUpperCase()
+            ) ?? text;
+          console.log("updatedFormula:", updatedFormula);
+          rows.setCellProperty(ri, ci, "f", isDynamicExpression ? updatedFormula : value);
+        } else {
+          // 正常值，确保没有错误样式
+          if (cell.style && cell.style.color === "#FF0000") {
+            delete cell.style.color;
+            if (Object.keys(cell.style).length === 0) {
+              delete cell.style;
+            }
+          }
+          console.log("动态函数执行正常值:", value);
+          const updatedFormula =
+            text?.replace(EXTRACT_FORMULA_CELL_NAME_REGEX, (match) =>
+              match.toUpperCase()
+            ) ?? text;
+          console.log("updatedFormula:", updatedFormula);
+          // 将计算结果赋值给 cell.text
+          rows.setCellProperty(ri, ci, "f", isDynamicExpression ? updatedFormula : value);
+        }
+      } else if (text?.startsWith?.("=")) {
+        // 现有公式处理逻辑
+        const isFormula = text?.startsWith?.("=");
+        const updatedFormula =
+          text?.replace(EXTRACT_FORMULA_CELL_NAME_REGEX, (match) =>
+            match.toUpperCase()
+          ) ?? text;
+        console.log("updatedFormula:", updatedFormula);
+        rows.setCellProperty(ri, ci, "f", isFormula ? updatedFormula : text);
+      } else {
+        // 普通文本处理逻辑
+        rows.setCellProperty(ri, ci, "f", text);
+      }
+    } else {
+      // 输入状态处理逻辑
+      console.log(
+        "setFormulaCellText 输入状态:",
+        state,
+        "text:",
+        text,
+        "ri:",
+        ri,
+        "ci:",
+        ci
+      ); // edit_5: 检查输入状态处理
+      let nri = ri;
+      if (this.unsortedRowMap.has(ri)) {
+        nri = this.unsortedRowMap.get(ri);
+      }
+      const oldCell = rows.getCell(nri, ci);
+      const oldText = oldCell ? oldCell.text : "";
+      this.setCellText(nri, ci, text, state);
+      // replace filter.value
+      if (autoFilter.active()) {
+        const filter = autoFilter.getFilter(ci);
+        if (filter) {
+          const vIndex = filter.value.findIndex((v) => v === oldText);
+          if (vIndex >= 0) {
+            filter.value.splice(vIndex, 1, text);
+          }
         }
       }
     }
+  }
+
+  // 获取单元格编辑文本，需要返回原始表达式
+  getCellEditText(ri, ci) {
+    const { rows } = this;
+    const cell = rows.getCell(ri, ci);
+
+    // 如果是动态表达式，返回原始$表达式
+    if (cell?.isDynamicExpression) {
+      return cell.formula;
+    }
+
+    // 现有逻辑
+    return cell?.text || "";
   }
 
   // state: input | finished
@@ -927,10 +1020,8 @@ export default class DataProxy {
         if (vIndex >= 0) {
           filter.value.splice(vIndex, 1, text);
         }
-        // console.log('filter:', filter, oldCell);
       }
     }
-    // this.resetAutoFilter();
   }
 
   getSelectedCell() {
@@ -1719,7 +1810,10 @@ export default class DataProxy {
         if (data.name === this.name) return;
         data.rows.each((ri, row) => {
           data.rows.eachCells(ri, (ci, cell) => {
-            if (cell.text && cell.text[0] === "=") {
+            if (
+              (cell.text && cell.text[0] === "=") ||
+              (cell.text && cell.text[0] === "$")
+            ) {
               cell.text = replaceCellRefWithNew(
                 cell.text,
                 (word) => expr2expr(word, 0, n, (x, y) => y >= si),
@@ -1737,7 +1831,10 @@ export default class DataProxy {
         if (data.name === this.name) return;
         data.rows.each((ri, row) => {
           data.rows.eachCells(ri, (ci, cell) => {
-            if (cell.text && cell.text[0] === "=") {
+            if (
+              (cell.text && cell.text[0] === "=") ||
+              (cell.text && cell.text[0] === "$")
+            ) {
               cell.text = replaceCellRefWithNew(
                 cell.text,
                 (word) => expr2expr(word, n, 0, (x) => x >= si),
@@ -1760,7 +1857,10 @@ export default class DataProxy {
         if (data.name === this.name) return;
         data.rows.each((ri, row) => {
           data.rows.eachCells(ri, (ci, cell) => {
-            if (cell.text && cell.text[0] === "=") {
+            if (
+              (cell.text && cell.text[0] === "=") ||
+              (cell.text && cell.text[0] === "$")
+            ) {
               cell.text = replaceCellRefWithNew(
                 cell.text,
                 (word) => expr2expr(word, 0, -n, (x, y) => y > ei),
@@ -1778,7 +1878,10 @@ export default class DataProxy {
         if (data.name === this.name) return;
         data.rows.each((ri, row) => {
           data.rows.eachCells(ri, (ci, cell) => {
-            if (cell.text && cell.text[0] === "=") {
+            if (
+              (cell.text && cell.text[0] === "=") ||
+              (cell.text && cell.text[0] === "$")
+            ) {
               cell.text = replaceCellRefWithNew(
                 cell.text,
                 (word) => expr2expr(word, -n, 0, (x) => x > ei),
@@ -1803,7 +1906,7 @@ export default class DataProxy {
   getRowId(ri) {
     return this.rows.getRowId(ri);
   }
-  
+
   getRowByIndex(ri) {
     return this.rows._[ri];
   }
@@ -1820,13 +1923,13 @@ export default class DataProxy {
   handleSetRowId() {
     const { selector } = this;
     const { sri } = selector.range;
-    const currentId = this.getRowId(sri) || '';
-    
+    const currentId = this.getRowId(sri) || "";
+
     const modal = new RowIdModal();
     modal.show((newId) => {
-      if (newId !== null && newId !== '') {
+      if (newId !== null && newId !== "") {
         this.setRowId(sri, newId);
       }
-    }, currentId);  // 传入当前ID作为默认值
+    }, currentId); // 传入当前ID作为默认值
   }
 }

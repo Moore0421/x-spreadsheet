@@ -12,6 +12,7 @@ import {
 import { expr2xy, xy2expr } from "./alphabet";
 import { numberCalc } from "./helper";
 import { Parser } from "hot-formula-parser";
+import dynamicFunctions from './dynamic_functions';
 
 // Converting infix expression to a suffix expression
 // src: AVERAGE(SUM(A1,A2), B1) + 50 + B20
@@ -202,6 +203,27 @@ const evalSuffixExpr = (srcStack, formulaMap, cellRender, cellList) => {
         ret = left <= top;
       }
       stack.push(ret);
+    } else if (fc === '$') {
+      const funcName = expr.split('.')[0].substring(1);
+      const funcPath = expr.substring(funcName.length + 1);
+      const func = dynamicFunctions.getFunction(funcName);
+      if (!func) {
+        return `#UNDEFINED_FUNCTION!`;
+      }
+      try {
+        const result = func();
+        // 处理对象属性访问（如 people[0].name）
+        const value = funcPath.split('.').reduce((acc, cur) => {
+          const [prop, index] = cur.split('[');
+          if (index !== undefined) {
+            return acc[prop][index.replace(']', '')];
+          }
+          return acc[prop] ?? `#PROPERTY_NOT_FOUND!`;
+        }, result);
+        stack.push(value);
+      } catch (e) {
+        return `#EVALUATION_ERROR!`;
+      }
     } else if (Array.isArray(expr)) {
       const [formula, len] = expr;
       const params = [];
@@ -400,6 +422,17 @@ const cellRender = (
     //   cellList
     // );
   }
+  
+  // 处理以$开头的动态函数表达式
+  if (src[0] === "$") {
+    const expression = src.substring(1);
+    try {
+      return evaluateDynamicExpression(expression);
+    } catch (e) {
+      return `#ERROR: ${e.message}`;
+    }
+  }
+  
   if (src[0] === trigger) {
     const { text, resolved, resolving } = getDynamicVariable(src);
     return resolving
@@ -408,10 +441,129 @@ const cellRender = (
         ? text ?? src
         : DYNAMIC_VARIABLE_ERROR;
   }
+  
   return src;
+};
+
+// 添加动态表达式评估函数
+const evaluateDynamicExpression = (expression) => {
+  if (!expression) return "#SYNTAX_ERROR!";
+  
+  // 匹配函数名和访问路径
+  const parts = expression.split('.');
+  const functionName = parts[0];
+  
+  try {
+    // 执行函数获取结果
+    let result;
+    try {
+      // 使用dynamicFunctions模块执行函数
+      if (!dynamicFunctions.getFunction(functionName)) {
+        return `#UNDEFINED_FUNCTION!`;
+      }
+      result = dynamicFunctions.executeFunction(functionName);
+    } catch (e) {
+      return `#FUNCTION_ERROR!`;
+    }
+    
+    // 检查结果是否为null或undefined
+    if (result === null) {
+      return "#NULL!";
+    }
+    
+    if (result === undefined) {
+      return "#UNDEFINED!";
+    }
+    
+    // 如果有后续访问路径，解析属性或数组
+    if (parts.length > 1) {
+      for (let i = 1; i < parts.length; i++) {
+        let part = parts[i];
+        
+        // 处理数组索引访问，例如: people[0]
+        if (part.includes('[')) {
+          const arrayAccessParts = part.split('[');
+          part = arrayAccessParts[0];
+          
+          // 可能有多个连续的数组访问，例如: matrix[0][1]
+          if (part) {
+            if (typeof result !== 'object' || result === null) {
+              return `#TYPE_ERROR!`;
+            }
+            result = result[part];
+            if (result === undefined) {
+              return `#PROPERTY_NOT_FOUND!`;
+            }
+            if (result === null) {
+              return `#NULL!`;
+            }
+          }
+          
+          // 处理所有的数组索引
+          for (let j = 1; j < arrayAccessParts.length; j++) {
+            const indexStr = arrayAccessParts[j].replace(']', '');
+            
+            // 检查索引是否为有效数字
+            if (!/^\d+$/.test(indexStr)) {
+              return `#SYNTAX_ERROR!`;
+            }
+            
+            const index = parseInt(indexStr, 10);
+            
+            // 检查是否为数组
+            if (!Array.isArray(result)) {
+              return `#TYPE_ERROR!`;
+            }
+            
+            // 检查索引是否越界
+            if (index < 0 || index >= result.length) {
+              return `#INDEX_OUT_OF_RANGE!`;
+            }
+            
+            result = result[index];
+            
+            // 检查结果是否为null或undefined
+            if (result === null) {
+              return `#NULL!`;
+            }
+            if (result === undefined) {
+              return `#UNDEFINED!`;
+            }
+          }
+        } else {
+          // 简单属性访问
+          if (typeof result !== 'object' || result === null) {
+            return `#TYPE_ERROR!`;
+          }
+          
+          result = result[part];
+          
+          // 检查路径中的undefined值
+          if (result === undefined) {
+            return `#PROPERTY_NOT_FOUND!`;
+          }
+          
+          // 检查null值
+          if (result === null) {
+            return `#NULL!`;
+          }
+        }
+      }
+    }
+    
+    // 处理最终结果
+    if (typeof result === 'object' && result !== null) {
+      // 对象和数组转为JSON字符串
+      return JSON.stringify(result);
+    }
+    
+    return result?.toString() || '';
+  } catch (e) {
+    return `#EVALUATION_ERROR!`;
+  }
 };
 
 export default {
   render: cellRender,
 };
-export { infixExprToSuffixExpr };
+export { infixExprToSuffixExpr, evaluateDynamicExpression };
