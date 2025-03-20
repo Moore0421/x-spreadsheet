@@ -415,8 +415,7 @@ const cellRender = (
     // 直接在cellRender中执行JavaScript代码并返回结果
     try {
       const jsCode = src.substring(2);
-      console.log("cellRender执行JS代码:", jsCode);
-      
+      // console.log("cellRender执行JS代码:", jsCode);
       // 直接执行JavaScript代码并返回结果
       return executeJavaScriptInSandbox(jsCode);
     } catch (e) {
@@ -747,7 +746,7 @@ const evaluateJsExpression = (expression, dataProxy) => {
  */
 const executeJavaScriptInSandbox = (code) => {
   try {
-    console.log('执行JavaScript代码:', code);
+    // console.log('执行JavaScript代码:', code);
     
     // 处理代码字符串，确保能够正确捕获return值
     let processedCode = code.trim();
@@ -806,7 +805,7 @@ const executeJavaScriptInSandbox = (code) => {
       executableCode = processedCode;
     }
     
-    console.log('处理后的代码:', executableCode);
+    // console.log('处理后的代码:', executableCode);
     
     // 创建沙箱环境变量
     const sandbox = {
@@ -1182,7 +1181,6 @@ const executeJavaScriptInSandbox = (code) => {
       sessionStorage: null,
       indexedDB: null,
       Proxy: null,
-      eval: null,
       globalThis: null,
       global: null,
       process: null,
@@ -1190,6 +1188,10 @@ const executeJavaScriptInSandbox = (code) => {
       module: null,
       exports: null
     };
+
+    // 在创建sandbox对象后执行
+    safelyDisable(sandbox, 'eval');
+    safelyDisable(sandbox, 'Function');
     
     // 如果有循环或递归，修改代码注入超时检查
     if (hasLoops || hasRecursion) {
@@ -1247,15 +1249,8 @@ const executeJavaScriptInSandbox = (code) => {
         `);
       }
       
-      // 执行前记录性能
-      const execStart = performance.now();
-      
       // 执行函数并获取结果
       const result = sandboxFunction(...sandboxValues);
-      
-      // 执行后记录性能
-      const execTime = performance.now() - execStart;
-      console.log(`代码执行耗时: ${execTime.toFixed(2)}ms`);
       
       // 检查内存警告
       if (memoryWarnings.length > 0) {
@@ -1308,6 +1303,19 @@ const executeJavaScriptInSandbox = (code) => {
   } catch (e) {
     console.error('沙箱创建错误:', e);
     return `#JS_SANDBOX_ERROR! ${e.message}`;
+  }
+};
+
+// 禁用危险函数的正确方式
+const safelyDisable = (obj, propertyName) => {
+  try {
+    Object.defineProperty(obj, propertyName, {
+      value: undefined,
+      writable: false,
+      configurable: false
+    });
+  } catch (e) {
+    console.warn(`无法禁用 ${propertyName}:`, e);
   }
 };
 
