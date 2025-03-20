@@ -82,7 +82,7 @@ function formulaProgress() {
 }
 
 function selectorSet(multiple, ri, ci, indexesUpdated = true, moving = false) {
-  console.log('selectorSet:', 'multiple:', multiple, 'ri:', ri, 'ci:', ci, 'indexesUpdated:', indexesUpdated, 'moving:', moving);
+  // console.log('selectorSet:', 'multiple:', multiple, 'ri:', ri, 'ci:', ci, 'indexesUpdated:', indexesUpdated, 'moving:', moving);
   const { table, selector, toolbar, data, contextMenu, editor } = this;
   const cell = data.getCell(ri, ci);
   if (multiple) {
@@ -540,10 +540,9 @@ function colResizerFinished(cRect, distance) {
 }
 
 function dataSetCellText(text, state = "finished") {
-  console.log('dataSetCellText:', 'text:', text, 'state:', state);
+  // console.log('dataSetCellText:', 'text:', text, 'state:', state);
   const {
     data,
-    selector,
     editor,
     contextMenu,
     autoFilter,
@@ -551,7 +550,7 @@ function dataSetCellText(text, state = "finished") {
   } = this;
   const { ri, ci } = data.selector;
   if (!data.selector || ri === undefined || ci === undefined) {
-    console.warn('dataSetCellText: data.selector, ri 或 ci 无效', data.selector, ri, ci);
+    // console.warn('dataSetCellText: data.selector, ri 或 ci 无效', data.selector, ri, ci);
     return;
   }
   if (ri === -1 || ci === -1) return;
@@ -564,20 +563,20 @@ function dataSetCellText(text, state = "finished") {
   const inputText = editor.inputText;
   if (editor.formulaCell && state === "finished") {
     const { ri, ci } = editor.formulaCell;
-    console.log('dataSetCellText 调用 data.setFormulaCellText (formulaCell):', 'text:', inputText, 'ri:', ri, 'ci:', ci, 'state:', state);
+    // console.log('dataSetCellText 调用 data.setFormulaCellText (formulaCell):', 'text:', inputText, 'ri:', ri, 'ci:', ci, 'state:', state);
     data.setFormulaCellText(inputText, ri, ci, state);
     this.trigger("cell-edited", inputText, ri, ci);
     this.trigger("cell-edit-finished", text, ri, ci);
     editor.setFormulaCell(null);
   } else if (state === "finished" && text?.trim?.().startsWith(trigger)) {
-    console.log('dataSetCellText 调用 data.setFormulaCellText (trigger):', 'text:', inputText, 'ri:', data.selector.ri, 'ci:', data.selector.ci, 'state:', state);
+    // console.log('dataSetCellText 调用 data.setFormulaCellText (trigger):', 'text:', inputText, 'ri:', data.selector.ri, 'ci:', data.selector.ci, 'state:', state);
     const { ri, ci } = data.selector;
     data.setFormulaCellText(inputText, ri, ci, state);
     this.trigger("cell-edited", inputText, ri, ci);
     this.trigger("cell-edit-finished", text, ri, ci);
   } else if (!editor.formulaCell) {
-    console.log('dataSetCellText 调用 data.setCellText:', 'text:', text, 'ri:', ri, 'ci:', ci, 'state:', state);
-    data.setCellText(text, ri, ci, state);
+    // console.log('dataSetCellText 调用 data.setCellText:', 'text:', text, 'ri:', ri, 'ci:', ci, 'state:', state);
+    data.setFormulaCellText(text, ri, ci, state);
     this.trigger("cell-edited", text, ri, ci);
     this.trigger("cell-edit-finished", text, ri, ci);
   }
@@ -745,7 +744,7 @@ function sheetInitEvents() {
     });
 
   selector.inputChange = (v) => {
-    console.log('editor.inputChange:', 'v:', v);
+    // console.log('editor.inputChange:', 'v:', v);
     dataSetCellText.call(this, v, "input");
     editorSet.call(this);
   };

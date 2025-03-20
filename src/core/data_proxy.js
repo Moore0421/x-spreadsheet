@@ -471,11 +471,7 @@ export default class DataProxy {
       navigator.clipboard.writeText(copyText).then(
         () => {},
         (err) => {
-          console.log(
-            "text copy to the system clipboard error  ",
-            copyText,
-            err
-          );
+          console.log("text copy to the system clipboard error  ", copyText, err);
         }
       );
     }
@@ -880,24 +876,63 @@ export default class DataProxy {
 
   // state: input | finished
   setFormulaCellText(text, ri, ci, state = "input") {
-    console.log(
-      "setCellText:",
-      "text:",
-      text,
-      "ri:",
-      ri,
-      "ci:",
-      ci,
-      "state:",
-      state
-    ); // edit_9: 确认 setCellText 函数被调用
+    // console.log("setCellText:","text:",text,"ri:",ri,"ci:",ci,"state:",state);
     const { autoFilter, rows } = this;
 
-    // 检查是否为动态函数表达式
-    const isDynamicExpression = text?.startsWith?.("$");
+    // 定义运算符列表
+    const operators = ['+', '-', '*', '/', '===', '==', '!==', '!=', '>=', '<=', '>', '<', '&&', '||', '%', '?', 'return'];
+    
+    // 优先处理$$前缀，确保不会被误判为其他类型的表达式
+    const isJavaScript = text && text.startsWith('$$');
+    
+    // 只有非JavaScript代码才考虑是否为JS运算表达式
+    const isJSExpression = !isJavaScript && text && text.startsWith('$') && 
+      (operators.some(op => text.includes(op)) || 
+       // 检查是否包含常见的字符串连接模式
+       /\s*\+\s*['"]/.test(text));
+    
+    // 只有既不是JavaScript代码也不是JS运算表达式的$开头表达式才是动态函数
+    const isDynamicExpression = !isJavaScript && !isJSExpression && 
+      text && text.startsWith('$');
 
     if (state === "finished") {
-      if (isDynamicExpression) {
+      if (isJavaScript) {
+        // 保存原始$$表达式到cell.formula
+        const cell = rows.getCellOrNew(ri, ci);
+        cell.formula = text;
+        cell.isJavaScript = true;
+        // 设置属性以支持双击编辑
+        rows.setCellProperty(ri, ci, "f", text);
+      } else if (isJSExpression) {
+        // 处理JS运算表达式
+        // console.log("检测到JS运算表达式:", text);
+        
+        // 保存原始表达式
+        const cell = rows.getCellOrNew(ri, ci);
+        cell.formula = text;
+        cell.isJSExpression = true;
+        
+        // 计算表达式结果
+        try {
+          // 去掉开头的$符号再计算
+          const jsExpressionResult = evaluateJsExpression(text.substring(1), this);
+          //console.log("JS运算表达式结果:", jsExpressionResult);
+          
+          // 设置单元格显示值
+          cell.text = jsExpressionResult?.toString() || '';
+          
+          // 设置属性以支持双击编辑
+          rows.setCellProperty(ri, ci, "f", text);
+        } catch (error) {
+          console.error("JS运算表达式计算错误:", error);
+          cell.text = `#JS_EXPRESSION_ERROR! ${error.message}`;
+          if (!cell.style) cell.style = {};
+          cell.style.color = "#FF0000"; // 错误标红
+        }
+      } else if (isDynamicExpression) {
+        // 动态函数表达式处理逻辑
+        // console.log("检测到动态函数表达式:", text);
+        
         // 保存原始$表达式
         const cell = rows.getCellOrNew(ri, ci);
         // 将原始表达式存储到 cell.formula
@@ -906,25 +941,16 @@ export default class DataProxy {
         cell.isDynamicExpression = true;
 
         // 计算值并设置错误样式
-        console.log("检测到动态表达式:", text);
-        const value = evaluateDynamicExpression(text.substring(1));
-        console.log("动态表达式计算结果:", value);
-        if (
-          value &&
-          typeof value === "string" &&
-          value.startsWith("#") &&
-          value.endsWith("!")
-        ) {
+        const value = evaluateDynamicExpression(text.substring(1), this);
+        // console.log("动态表达式计算结果:", value);
+        
+        // 处理结果
+        if (value && typeof value === "string" && value.startsWith("#") && value.endsWith("!")) {
           // 这是一个错误值，应用错误样式
           if (!cell.style) cell.style = {};
           cell.style.color = "#FF0000"; // 红色错误文本
           console.error("动态函数执行错误:", value);
-          const updatedFormula =
-            text?.replace(EXTRACT_FORMULA_CELL_NAME_REGEX, (match) =>
-              match.toUpperCase()
-            ) ?? text;
-          console.log("updatedFormula:", updatedFormula);
-          rows.setCellProperty(ri, ci, "f", isDynamicExpression ? updatedFormula : value);
+          cell.text = value;
         } else {
           // 正常值，确保没有错误样式
           if (cell.style && cell.style.color === "#FF0000") {
@@ -933,40 +959,47 @@ export default class DataProxy {
               delete cell.style;
             }
           }
-          console.log("动态函数执行正常值:", value);
-          const updatedFormula =
-            text?.replace(EXTRACT_FORMULA_CELL_NAME_REGEX, (match) =>
-              match.toUpperCase()
-            ) ?? text;
-          console.log("updatedFormula:", updatedFormula);
+          // console.log("动态函数执行正常值:", value);
           // 将计算结果赋值给 cell.text
-          rows.setCellProperty(ri, ci, "f", isDynamicExpression ? updatedFormula : value);
+          cell.text = value?.toString() || '';
         }
-      } else if (text?.startsWith?.("=")) {
+
+        // 特殊处理动态函数表达式的updatedFormula
+        // 只将真正的单元格引用转为大写，保留其他标识符的大小写
+        let updatedFormula = text;
+        
+        // 仅转换独立的单元格引用，如A1、B2等
+        // 创建一个只匹配独立单元格引用的正则表达式
+        const cellRefRegex = /\b([A-Z]+[0-9]+)\b(?!\()/gi;
+        updatedFormula = updatedFormula.replace(cellRefRegex, match => match.toUpperCase());
+        
+        // console.log("保留标识符大小写的updatedFormula:", updatedFormula);
+        rows.setCellProperty(ri, ci, "f", updatedFormula);
+      } else if (text && text[0] === "=") {
         // 现有公式处理逻辑
-        const isFormula = text?.startsWith?.("=");
+        const isFormula = text[0] === "=";
         const updatedFormula =
           text?.replace(EXTRACT_FORMULA_CELL_NAME_REGEX, (match) =>
             match.toUpperCase()
           ) ?? text;
-        console.log("updatedFormula:", updatedFormula);
+        // console.log("updatedFormula:", updatedFormula);
         rows.setCellProperty(ri, ci, "f", isFormula ? updatedFormula : text);
       } else {
-        // 普通文本处理逻辑
-        rows.setCellProperty(ri, ci, "f", text);
+        // 普通文本处理逻辑 - 直接设置文本值
+        rows.setCellText(ri, ci, text);
+        
+        // 确保清除任何可能存在的动态表达式标记
+        const cell = rows.getCell(ri, ci);
+        if (cell) {
+          delete cell.isDynamicExpression;
+          delete cell.isJSExpression;
+          delete cell.isJavaScript;
+          delete cell.formula;
+        }
       }
     } else {
       // 输入状态处理逻辑
-      console.log(
-        "setFormulaCellText 输入状态:",
-        state,
-        "text:",
-        text,
-        "ri:",
-        ri,
-        "ci:",
-        ci
-      ); // edit_5: 检查输入状态处理
+      // console.log("setFormulaCellText 输入状态:",state,"text:",text,"ri:",ri,"ci:",ci);
       let nri = ri;
       if (this.unsortedRowMap.has(ri)) {
         nri = this.unsortedRowMap.get(ri);
@@ -1497,13 +1530,15 @@ export default class DataProxy {
   // state: input | finished
   setCellText(ri, ci, text, state) {
     const { rows, history, validations } = this;
+    // console.log("setCellText:", ri, ci, text, state);
     if (state === "finished") {
-      rows.setCellText(ri, ci, "");
       history.add(this.getData());
       rows.setCellText(ri, ci, text);
+      // console.log("setCellText-finished:", ri, ci, text, state);
     } else {
       rows.setCellText(ri, ci, text);
       this.change(this.getData());
+      // console.log("setCellText-input:", ri, ci, text, state);
     }
     // validator
     validations.validate(ri, ci, text);

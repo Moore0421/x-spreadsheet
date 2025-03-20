@@ -408,28 +408,43 @@ const cellRender = (
     } catch (e) {
       return GENERAL_ERROR;
     }
-
-    //Commented This functionality of formula calculation on X-Spread sheet and doing it by our own way
-
-    // const stack = infixExprToSuffixExpr(src.substring(1));
-    // console.log(stack, "stack");
-    // if (stack.length <= 0) return src;
-    // return evalSuffixExpr(
-    //   stack,
-    //   formulaMap,
-    //   (x, y) =>
-    //     cellRender(getCellText(x, y), formulaMap, getCellText, cellList),
-    //   cellList
-    // );
+  }
+  
+  // 处理JavaScript代码（$$前缀）
+  if (src.startsWith("$$")) {
+    // 直接在cellRender中执行JavaScript代码并返回结果
+    try {
+      const jsCode = src.substring(2);
+      console.log("cellRender执行JS代码:", jsCode);
+      
+      // 直接执行JavaScript代码并返回结果
+      return executeJavaScriptInSandbox(jsCode);
+    } catch (e) {
+      console.error("JS执行错误:", e);
+      return `#JS_ERROR! ${e.message}`;
+    }
   }
   
   // 处理以$开头的动态函数表达式
-  if (src[0] === "$") {
-    const expression = src.substring(1);
-    try {
-      return evaluateDynamicExpression(expression);
-    } catch (e) {
-      return `#ERROR: ${e.message}`;
+  if (src[0] === "$" && !src.startsWith("$$")) {
+    // 检查是否包含运算符
+    const operators = ['+', '-', '*', '/', '===', '==', '!==', '!=', '>=', '<=', '>', '<', '&&', '||'];
+    const hasOperator = operators.some(op => src.includes(op));
+    
+    if (hasOperator) {
+      // 是JS运算表达式，交给evaluateJsExpression处理
+      try {
+        return evaluateJsExpression(src.substring(1));
+      } catch (e) {
+        return `#JS_ERROR: ${e.message}`;
+      }
+    } else {
+      // 是动态函数表达式
+      try {
+        return evaluateDynamicExpression(src.substring(1));
+      } catch (e) {
+        return `#ERROR: ${e.message}`;
+      }
     }
   }
   
@@ -445,25 +460,81 @@ const cellRender = (
   return src;
 };
 
-// 添加动态表达式评估函数
-const evaluateDynamicExpression = (expression) => {
-  if (!expression) return "#SYNTAX_ERROR!";
+// 更新动态表达式评估函数，添加保护检查
+const evaluateDynamicExpression = (expression, dataProxy) => {
+  // 添加保护检查，防止$$代码被错误传入
+  if (expression.startsWith('$')) {
+    console.warn('错误：$$前缀代码被错误地传递给了evaluateDynamicExpression');
+    return "#ROUTING_ERROR! JavaScript代码应使用executeJavaScriptInSandbox处理";
+  }
   
-  // 匹配函数名和访问路径
-  const parts = expression.split('.');
-  const functionName = parts[0];
+  if (!expression) return "#SYNTAX_ERROR! expression is empty";
   
   try {
+    // 检查是否是运算表达式（包含运算符）
+    const operators = ['+', '-', '*', '/', '===', '==', '!==', '!=', '>=', '<=', '>', '<', '&&', '||'];
+    const hasOperator = operators.some(op => expression.includes(op));
+    
+    // 如果是运算表达式，则进行特殊处理
+    if (hasOperator) {
+      return evaluateJsExpression(expression, dataProxy);
+    }
+    
+    // 原始函数解析逻辑保持不变
+    // 匹配模式：functionName(arg1,arg2,...) 或 functionName
+    const functionMatch = expression.match(/^([a-zA-Z0-9_]+)(?:\((.*)\))?/);
+    
+    if (!functionMatch) {
+      return "#SYNTAX_ERROR! Invalid function format";
+    }
+    
+    const functionName = functionMatch[1];
+    const argsString = functionMatch[2] || '';
+    
+    // 解析参数（支持简单参数，未处理嵌套括号和引号内的逗号）
+    const args = argsString ? argsString.split(',').map(arg => {
+      const trimmed = arg.trim();
+      // 尝试将数字字符串转换为数字
+      if (/^-?\d+$/.test(trimmed)) {
+        return parseInt(trimmed, 10);
+      } else if (/^-?\d+\.\d+$/.test(trimmed)) {
+        return parseFloat(trimmed);
+      } else if (trimmed === 'true') {
+        return true;
+      } else if (trimmed === 'false') {
+        return false;
+      } else if (trimmed === 'null') {
+        return null;
+      } else if (trimmed === 'undefined') {
+        return undefined;
+      } else if (/^["'].*["']$/.test(trimmed)) {
+        // 处理引号中的字符串
+        return trimmed.slice(1, -1);
+      }
+      return trimmed;
+    }) : [];
+    
     // 执行函数获取结果
     let result;
     try {
-      // 使用dynamicFunctions模块执行函数
+      // 使用dynamicFunctions模块执行函数并传递参数
       if (!dynamicFunctions.getFunction(functionName)) {
-        return `#UNDEFINED_FUNCTION!`;
+        // 尝试进行不区分大小写的查找（如果需要）
+        const allFunctions = Object.keys(dynamicFunctions.listFunctions());
+        const functionNameLower = functionName.toLowerCase();
+        const matchedFunction = allFunctions.find(f => f.toLowerCase() === functionNameLower);
+        
+        if (matchedFunction) {
+          // console.log(`找到不区分大小写的函数匹配: ${functionName} -> ${matchedFunction}`);
+          result = dynamicFunctions.executeFunction(matchedFunction, args);
+        } else {
+          return `#UNDEFINED_FUNCTION!`;
+        }
+      } else {
+        result = dynamicFunctions.executeFunction(functionName, args);
       }
-      result = dynamicFunctions.executeFunction(functionName);
     } catch (e) {
-      return `#FUNCTION_ERROR!`;
+      return `#FUNCTION_ERROR! ${e.message}`;
     }
     
     // 检查结果是否为null或undefined
@@ -475,9 +546,16 @@ const evaluateDynamicExpression = (expression) => {
       return "#UNDEFINED!";
     }
     
-    // 如果有后续访问路径，解析属性或数组
-    if (parts.length > 1) {
-      for (let i = 1; i < parts.length; i++) {
+    // 处理属性访问路径（如果有）
+    const pathPart = expression.substring(functionMatch[0].length);
+    
+    if (pathPart) {
+      // 获取第一个点之后的访问路径
+      const accessPath = pathPart.startsWith('.') ? pathPart.substring(1) : pathPart;
+      const parts = accessPath.split('.');
+      
+      // 解析属性访问路径
+      for (let i = 0; i < parts.length; i++) {
         let part = parts[i];
         
         // 处理数组索引访问，例如: people[0]
@@ -505,7 +583,7 @@ const evaluateDynamicExpression = (expression) => {
             
             // 检查索引是否为有效数字
             if (!/^\d+$/.test(indexStr)) {
-              return `#SYNTAX_ERROR!`;
+              return `#SYNTAX_ERROR! indexStr is not a number`;
             }
             
             const index = parseInt(indexStr, 10);
@@ -559,7 +637,365 @@ const evaluateDynamicExpression = (expression) => {
     
     return result?.toString() || '';
   } catch (e) {
-    return `#EVALUATION_ERROR!`;
+    return `#EVALUATION_ERROR! ${e.message}`;
+  }
+};
+
+// 新增JavaScript表达式求值函数
+const evaluateJsExpression = (expression, dataProxy) => {
+  try {
+    // console.log('计算JS表达式:', expression);
+    
+    // 1. 查找表达式中的所有动态函数引用
+    const functionRefs = new Set();
+    const dynamicFuncRegex = /\b([a-zA-Z0-9_]+)(?:\([^)]*\))?/g;
+    let match;
+    
+    while ((match = dynamicFuncRegex.exec(expression)) !== null) {
+      const funcName = match[1];
+      // 检查是否是已注册的动态函数
+      if (dynamicFunctions.getFunction(funcName)) {
+        functionRefs.add(funcName);
+      }
+    }
+    
+    // 2. 预处理表达式，先解析所有的动态函数调用
+    let processedExpr = expression;
+    
+    // 匹配所有函数调用和属性访问模式
+    const fullExpressionRegex = /\b([a-zA-Z0-9_]+)(\([^)]*\))?(\.[a-zA-Z0-9_]+|\[[^\]]+\])*/g;
+    
+    // 创建一个临时变量存储函数结果
+    const tempVars = {};
+    let varCounter = 0;
+    
+    // 替换所有复杂表达式为临时变量
+    processedExpr = processedExpr.replace(fullExpressionRegex, (fullMatch, funcName) => {
+      // 如果这不是一个动态函数调用，保持原样
+      if (!functionRefs.has(funcName)) {
+        return fullMatch;
+      }
+      
+      const varName = `__temp${varCounter++}`;
+      
+      try {
+        // 评估动态函数表达式
+        const result = evaluateDynamicExpression(fullMatch, dataProxy);
+        tempVars[varName] = result;
+        return varName;
+      } catch (e) {
+        console.error(`动态函数 ${funcName} 执行错误:`, e);
+        // 发生错误时将其记录并保持表达式原样
+        return fullMatch;
+      }
+    });
+    
+    // console.log('处理后的表达式:', processedExpr);
+    // console.log('临时变量:', tempVars);
+    
+    // 3. 构建上下文对象，包含动态函数和临时变量
+    const context = {
+      ...tempVars,
+    };
+    
+    // 为每个引用的动态函数添加到上下文
+    functionRefs.forEach(funcName => {
+      const func = dynamicFunctions.getFunction(funcName);
+      if (func) {
+        context[funcName] = (...args) => {
+          // console.log(`JS表达式中调用函数 ${funcName}:`, args);
+          return dynamicFunctions.executeFunction(funcName, args);
+        };
+      }
+    });
+    
+    // 4. 构建计算函数
+    const argNames = Object.keys(context);
+    const argValues = Object.values(context);
+    
+    // console.log('表达式上下文变量:', argNames);
+    
+    // 创建并执行函数
+    const calcFunc = new Function(...argNames, `
+      try {
+        return ${processedExpr};
+      } catch (e) {
+        return "#CALCULATION_ERROR! " + e.message;
+      }
+    `);
+    
+    // 执行计算
+    let result = calcFunc(...argValues);
+    
+    // 5. 格式化结果
+    if (result === true) return "TRUE";
+    if (result === false) return "FALSE";
+    if (result === null) return "#NULL!";
+    if (result === undefined) return "#UNDEFINED!";
+    
+    return result;
+  } catch (e) {
+    console.error('JS表达式计算错误:', e);
+    return `#JS_EVALUATION_ERROR! ${e.message}`;
+  }
+};
+
+/**
+ * 在安全沙箱中执行JavaScript代码并获取返回值（同步版本）
+ * @param {string} code 要执行的JavaScript代码
+ * @returns {*} 执行结果或错误信息
+ */
+const executeJavaScriptInSandbox = (code) => {
+  try {
+    console.log('执行JavaScript代码:', code);
+    
+    // 处理代码字符串，确保能够正确捕获return值
+    let processedCode = code.trim();
+    
+    // 超时保护 - 记录开始时间
+    const startTime = Date.now();
+    const MAX_EXECUTION_TIME = 5000; // 5秒超时限制
+    let isTimedOut = false;
+    
+    // 检查代码类型，并准备适当的执行方式
+    const hasExplicitReturn = /\breturn\b/.test(processedCode);
+    const isSimpleExpression = !processedCode.includes(';') && 
+                             !processedCode.includes('{') && 
+                             !processedCode.includes('\n');
+    
+    // 检测潜在的无限循环
+    const hasLoops = /\b(for|while|do)\b/.test(processedCode);
+    const hasRecursion = /function\s+\w+\s*\([^)]*\)\s*{[^}]*\1\s*\(/.test(processedCode);
+    
+    if (hasLoops || hasRecursion) {
+      console.warn('检测到可能的循环或递归，添加超时保护');
+    }
+    
+    let executableCode;
+    if (isSimpleExpression && !hasExplicitReturn) {
+      // 简单表达式，自动添加return
+      executableCode = `return (${processedCode});`;
+    } else if (hasExplicitReturn) {
+      // 已有return语句，确保在函数体内执行
+      executableCode = processedCode;
+    } else {
+      // 复杂代码，可能隐式返回undefined
+      executableCode = processedCode;
+    }
+    
+    console.log('处理后的代码:', executableCode);
+    
+    // 创建沙箱环境变量
+    const sandbox = {
+      // 基本类型和构造函数
+      Object, Array, String, Number, Boolean, Date, RegExp, Math, JSON,
+      
+      // 添加超时检查函数
+      __checkTimeout: function() {
+        if (Date.now() - startTime > MAX_EXECUTION_TIME) {
+          isTimedOut = true;
+          throw new Error('代码执行超时(5秒)');
+        }
+      },
+      
+      // 安全的控制台方法
+      console: {
+        log: (...args) => {
+          console.log('沙箱控制台:', ...args);
+          sandbox.__checkTimeout(); // 每次调用检查超时
+          return undefined;
+        },
+        warn: (...args) => {
+          console.warn('沙箱控制台:', ...args);
+          sandbox.__checkTimeout();
+          return undefined;
+        },
+        error: (...args) => {
+          console.error('沙箱控制台:', ...args);
+          sandbox.__checkTimeout();
+          return undefined;
+        }
+      },
+      
+      // 工具函数 - 添加超时检查
+      setTimeout: (fn, delay) => {
+        sandbox.__checkTimeout();
+        const safeDelay = Math.min(delay || 0, 1000); // 限制最大延迟
+        return setTimeout(() => {
+          sandbox.__checkTimeout();
+          fn();
+        }, safeDelay);
+      },
+      
+      // 重写数组方法，添加超时检查
+      Array: {
+        ...Array,
+        prototype: {
+          ...Array.prototype,
+          forEach: function(callback, thisArg) {
+            sandbox.__checkTimeout();
+            return Array.prototype.forEach.call(this, (...args) => {
+              sandbox.__checkTimeout();
+              return callback.apply(thisArg, args);
+            });
+          },
+          map: function(callback, thisArg) {
+            sandbox.__checkTimeout();
+            return Array.prototype.map.call(this, (...args) => {
+              sandbox.__checkTimeout();
+              return callback.apply(thisArg, args);
+            });
+          },
+          filter: function(callback, thisArg) {
+            sandbox.__checkTimeout();
+            return Array.prototype.filter.call(this, (...args) => {
+              sandbox.__checkTimeout();
+              return callback.apply(thisArg, args);
+            });
+          },
+          reduce: function(callback, initialValue) {
+            sandbox.__checkTimeout();
+            return Array.prototype.reduce.call(this, (...args) => {
+              sandbox.__checkTimeout();
+              return callback.apply(null, args);
+            }, initialValue);
+          }
+        }
+      },
+      
+      // 数据处理工具
+      parseInt, parseFloat, isNaN, isFinite,
+      encodeURI, decodeURI, encodeURIComponent, decodeURIComponent,
+      
+      // 自定义工具函数
+      utils: {
+        formatNumber: (num, decimals = 2) => {
+          sandbox.__checkTimeout();
+          return Number(num).toFixed(decimals);
+        },
+        formatDate: (date, format = 'YYYY-MM-DD') => {
+          sandbox.__checkTimeout();
+          const d = new Date(date);
+          if (isNaN(d.getTime())) return 'Invalid Date';
+          
+          const year = d.getFullYear();
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          
+          return format
+            .replace('YYYY', year)
+            .replace('MM', month)
+            .replace('DD', day);
+        },
+        sum: (array) => {
+          sandbox.__checkTimeout();
+          if (!Array.isArray(array)) return 0;
+          let result = 0;
+          for (let i = 0; i < array.length; i++) {
+            sandbox.__checkTimeout();
+            result += (Number(array[i]) || 0);
+          }
+          return result;
+        },
+        avg: (array) => {
+          sandbox.__checkTimeout();
+          if (!Array.isArray(array) || array.length === 0) return 0;
+          return sandbox.utils.sum(array) / array.length;
+        }
+      },
+      
+      // 禁止访问的对象设为null
+      window: null,
+      document: null,
+      navigator: null,
+      location: null,
+      fetch: null,
+      XMLHttpRequest: null
+    };
+    
+    // 如果有循环或递归，修改代码注入超时检查
+    if (hasLoops || hasRecursion) {
+      // 在循环和函数调用前插入超时检查
+      executableCode = executableCode
+        .replace(/(\b(for|while|do)\b[^{]*{)/g, '$1 __checkTimeout();')
+        .replace(/(\bfunction\b[^{]*{)/g, '$1 __checkTimeout();');
+    }
+    
+    // 构建函数参数列表
+    const sandboxKeys = Object.keys(sandbox);
+    const sandboxValues = Object.values(sandbox);
+    
+    // 创建函数封装并执行代码
+    let sandboxFunction;
+    
+    try {
+      if (isSimpleExpression && !hasExplicitReturn) {
+        // 简单表达式，直接求值并返回
+        sandboxFunction = new Function(...sandboxKeys, `
+          "use strict";
+          try {
+            __checkTimeout(); // 初始检查
+            const result = (${processedCode});
+            __checkTimeout(); // 结果检查
+            return result;
+          } catch(e) {
+            if (e.message.includes('超时')) {
+              return "#TIMEOUT_ERROR! 代码执行超过5秒限制";
+            }
+            throw e;
+          }
+        `);
+      } else {
+        // 复杂代码块，包装在函数中
+        sandboxFunction = new Function(...sandboxKeys, `
+          "use strict";
+          try {
+            __checkTimeout(); // 初始检查
+            let __result;
+            
+            // 包装在函数中来捕获return值
+            __result = (function() {
+              ${executableCode}
+            })();
+            
+            __checkTimeout(); // 结果检查
+            return __result;
+          } catch(e) {
+            if (e.message.includes('超时')) {
+              return "#TIMEOUT_ERROR! 代码执行超过5秒限制";
+            }
+            throw e;
+          }
+        `);
+      }
+      
+      // 执行函数并获取结果
+      const result = sandboxFunction(...sandboxValues);
+      
+      // 再次检查是否超时
+      if (isTimedOut) {
+        return "#TIMEOUT_ERROR! 代码执行超过5秒限制";
+      }
+      
+      // 格式化结果
+      if (result === undefined || result === null) {
+        return ''; // 没有返回值则显示空
+      } else if (typeof result === 'object') {
+        try {
+          return JSON.stringify(result);
+        } catch (e) {
+          return String(result);
+        }
+      } else {
+        return result;
+      }
+    } catch (e) {
+      console.error('JavaScript执行错误:', e);
+      return `#JS_ERROR! ${e.message}`;
+    }
+  } catch (e) {
+    console.error('沙箱创建错误:', e);
+    return `#JS_SANDBOX_ERROR! ${e.message}`;
   }
 };
 

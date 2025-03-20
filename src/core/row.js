@@ -117,17 +117,23 @@ class Rows {
   }
 
   setCellText(ri, ci, text) {
+    // console.log("setCellText:", ri, ci, text);
     const cell = this.getCellOrNew(ri, ci);
     if (cell.editable !== false) {
+      // console.log("setCellText-editable:", ri, ci, text);
       const valueSetter = this.options.valueSetter;
       if (valueSetter) {
+        // console.log("setCellText-valueSetter:", ri, ci, text);
         const result = valueSetter({ ...this, text, cell });
         let retrievedText, formattedText, html;
         if (result && typeof result === "object" && !Array.isArray(result)) {
+          // console.log("setCellText-valueSetter-result:", ri, ci, text);
           ({ retrievedText, formattedText, html } = result);
         } else if (Array.isArray(result)) {
+          // console.log("setCellText-valueSetter-result-array:", ri, ci, text);
           [retrievedText, formattedText, html] = result;
         } else {
+          // console.log("setCellText-valueSetter-result-else:", ri, ci, text);
           retrievedText = result;
           formattedText = "";
           html = "";
@@ -137,6 +143,7 @@ class Rows {
         cell.f = "";
         cell.h = html ?? "";
       } else {
+        // console.log("setCellText-else:", ri, ci, text);
         cell.text = text;
         cell.f = "";
         cell.h = "";

@@ -89,7 +89,6 @@ class Spreadsheet {
       this.sheet.trigger("change", ...args);
     };
     this.datas.push(d);
-    // console.log('d:', n, d, this.datas);
     if (this.bottombar !== null) {
       this.bottombar.addItem(n, active, this.options);
     }
@@ -290,9 +289,7 @@ class Spreadsheet {
 
   initCustomFunctions() {
     this.sheet.data.variables.registerFunction('getPeople', getPeople);
-    console.log('getPeople', getPeople);
     this.sheet.data.variables.registerFunction('getProducts', getProducts);
-    console.log('getProducts', getProducts);
   }
 }
 
