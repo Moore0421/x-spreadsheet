@@ -741,7 +741,7 @@ const evaluateJsExpression = (expression, dataProxy) => {
 };
 
 /**
- * 在安全沙箱中执行JavaScript代码并获取返回值（同步版本）
+ * 在安全沙箱中执行JavaScript代码并获取返回值（增强版）
  * @param {string} code 要执行的JavaScript代码
  * @returns {*} 执行结果或错误信息
  */
@@ -757,11 +757,34 @@ const executeJavaScriptInSandbox = (code) => {
     const MAX_EXECUTION_TIME = 5000; // 5秒超时限制
     let isTimedOut = false;
     
+    // 内存使用跟踪
+    const MAX_ARRAY_SIZE = 10000000; // 最大允许的数组大小
+    const MAX_STRING_SIZE = 5000000; // 最大允许的字符串长度
+    let memoryWarnings = [];
+    
     // 检查代码类型，并准备适当的执行方式
     const hasExplicitReturn = /\breturn\b/.test(processedCode);
     const isSimpleExpression = !processedCode.includes(';') && 
                              !processedCode.includes('{') && 
                              !processedCode.includes('\n');
+    
+    // 安全检查
+    const potentiallyDangerousPatterns = [
+      { pattern: /eval\s*\(/, message: "eval() 函数不允许使用" },
+      { pattern: /Function\s*\(/, message: "Function 构造函数不允许使用" },
+      { pattern: /with\s*\(/, message: "with 语句不允许使用" },
+      { pattern: /\bparent\b|\btop\b|\bwindow\b|\bdocument\b|\blocation\b/, message: "访问DOM或全局对象不允许" },
+      { pattern: /localStorage|sessionStorage|indexedDB/, message: "浏览器存储API不允许使用" },
+      { pattern: /new\s+Worker/, message: "Worker API不允许使用" },
+      { pattern: /\bfetch\b|\bXMLHttpRequest\b|\bAjax\b/, message: "网络请求不允许" }
+    ];
+    
+    // 检查危险模式
+    for (const {pattern, message} of potentiallyDangerousPatterns) {
+      if (pattern.test(processedCode)) {
+        return `#SECURITY_ERROR! ${message}`;
+      }
+    }
     
     // 检测潜在的无限循环
     const hasLoops = /\b(for|while|do)\b/.test(processedCode);
@@ -790,7 +813,7 @@ const executeJavaScriptInSandbox = (code) => {
       // 基本类型和构造函数
       Object, Array, String, Number, Boolean, Date, RegExp, Math, JSON,
       
-      // 添加超时检查函数
+      // 添加监控函数
       __checkTimeout: function() {
         if (Date.now() - startTime > MAX_EXECUTION_TIME) {
           isTimedOut = true;
@@ -798,11 +821,20 @@ const executeJavaScriptInSandbox = (code) => {
         }
       },
       
+      __checkMemory: function(obj, type) {
+        if (type === 'array' && Array.isArray(obj) && obj.length > MAX_ARRAY_SIZE) {
+          memoryWarnings.push(`数组大小超过限制: ${obj.length} > ${MAX_ARRAY_SIZE}`);
+        } else if (type === 'string' && typeof obj === 'string' && obj.length > MAX_STRING_SIZE) {
+          memoryWarnings.push(`字符串长度超过限制: ${obj.length} > ${MAX_STRING_SIZE}`);
+        }
+        sandbox.__checkTimeout();
+      },
+      
       // 安全的控制台方法
       console: {
         log: (...args) => {
           console.log('沙箱控制台:', ...args);
-          sandbox.__checkTimeout(); // 每次调用检查超时
+          sandbox.__checkTimeout();
           return undefined;
         },
         warn: (...args) => {
@@ -814,10 +846,15 @@ const executeJavaScriptInSandbox = (code) => {
           console.error('沙箱控制台:', ...args);
           sandbox.__checkTimeout();
           return undefined;
+        },
+        table: (data) => {
+          console.table(data);
+          sandbox.__checkTimeout();
+          return undefined;
         }
       },
       
-      // 工具函数 - 添加超时检查
+      // 带监控的定时器函数
       setTimeout: (fn, delay) => {
         sandbox.__checkTimeout();
         const safeDelay = Math.min(delay || 0, 1000); // 限制最大延迟
@@ -827,9 +864,21 @@ const executeJavaScriptInSandbox = (code) => {
         }, safeDelay);
       },
       
-      // 重写数组方法，添加超时检查
+      // 安全版数组构造函数
       Array: {
         ...Array,
+        from: function(arrayLike, mapFn, thisArg) {
+          sandbox.__checkTimeout();
+          const result = Array.from(arrayLike, mapFn, thisArg);
+          sandbox.__checkMemory(result, 'array');
+          return result;
+        },
+        of: function(...items) {
+          sandbox.__checkTimeout();
+          const result = Array.of(...items);
+          sandbox.__checkMemory(result, 'array');
+          return result;
+        },
         prototype: {
           ...Array.prototype,
           forEach: function(callback, thisArg) {
@@ -841,17 +890,21 @@ const executeJavaScriptInSandbox = (code) => {
           },
           map: function(callback, thisArg) {
             sandbox.__checkTimeout();
-            return Array.prototype.map.call(this, (...args) => {
+            const result = Array.prototype.map.call(this, (...args) => {
               sandbox.__checkTimeout();
               return callback.apply(thisArg, args);
             });
+            sandbox.__checkMemory(result, 'array');
+            return result;
           },
           filter: function(callback, thisArg) {
             sandbox.__checkTimeout();
-            return Array.prototype.filter.call(this, (...args) => {
+            const result = Array.prototype.filter.call(this, (...args) => {
               sandbox.__checkTimeout();
               return callback.apply(thisArg, args);
             });
+            sandbox.__checkMemory(result, 'array');
+            return result;
           },
           reduce: function(callback, initialValue) {
             sandbox.__checkTimeout();
@@ -859,6 +912,46 @@ const executeJavaScriptInSandbox = (code) => {
               sandbox.__checkTimeout();
               return callback.apply(null, args);
             }, initialValue);
+          },
+          concat: function(...arrays) {
+            sandbox.__checkTimeout();
+            const result = Array.prototype.concat.apply(this, arrays);
+            sandbox.__checkMemory(result, 'array');
+            return result;
+          },
+          slice: function(start, end) {
+            sandbox.__checkTimeout();
+            const result = Array.prototype.slice.call(this, start, end);
+            sandbox.__checkMemory(result, 'array');
+            return result;
+          },
+          join: function(separator) {
+            sandbox.__checkTimeout();
+            const result = Array.prototype.join.call(this, separator);
+            sandbox.__checkMemory(result, 'string');
+            return result;
+          }
+        }
+      },
+      
+      // 安全版的字符串处理
+      String: {
+        ...String,
+        prototype: {
+          ...String.prototype,
+          repeat: function(count) {
+            sandbox.__checkTimeout();
+            const result = String.prototype.repeat.call(this, Math.min(count, 10000));
+            sandbox.__checkMemory(result, 'string');
+            return result;
+          },
+          padStart: function(targetLength, padString) {
+            sandbox.__checkTimeout();
+            return String.prototype.padStart.call(this, targetLength, padString);
+          },
+          padEnd: function(targetLength, padString) {
+            sandbox.__checkTimeout();
+            return String.prototype.padEnd.call(this, targetLength, padString);
           }
         }
       },
@@ -867,26 +960,91 @@ const executeJavaScriptInSandbox = (code) => {
       parseInt, parseFloat, isNaN, isFinite,
       encodeURI, decodeURI, encodeURIComponent, decodeURIComponent,
       
+      // JSON处理增强
+      JSON: {
+        ...JSON,
+        parse: (text) => {
+          sandbox.__checkTimeout();
+          try {
+            return JSON.parse(text);
+          } catch (e) {
+            console.error('JSON解析错误:', e);
+            return null;
+          }
+        },
+        stringify: (value, replacer, space) => {
+          sandbox.__checkTimeout();
+          try {
+            const result = JSON.stringify(value, replacer, space);
+            sandbox.__checkMemory(result, 'string');
+            return result;
+          } catch (e) {
+            console.error('JSON序列化错误:', e);
+            return '{"error":"无法序列化对象"}';
+          }
+        }
+      },
+      
       // 自定义工具函数
       utils: {
-        formatNumber: (num, decimals = 2) => {
+        // 数值处理
+        formatNumber: (num, options = {}) => {
           sandbox.__checkTimeout();
-          return Number(num).toFixed(decimals);
+          const { 
+            decimals = 2,
+            locale = 'zh-CN',
+            style = 'decimal',
+            currency = 'CNY'
+          } = options;
+          
+          try {
+            return new Intl.NumberFormat(locale, {
+              style,
+              currency,
+              minimumFractionDigits: decimals,
+              maximumFractionDigits: decimals
+            }).format(num);
+          } catch (e) {
+            return Number(num).toFixed(decimals);
+          }
         },
-        formatDate: (date, format = 'YYYY-MM-DD') => {
+        
+        // 日期处理
+        formatDate: (date, format = 'YYYY-MM-DD', locale = 'zh-CN') => {
           sandbox.__checkTimeout();
           const d = new Date(date);
           if (isNaN(d.getTime())) return 'Invalid Date';
           
+          if (format === 'locale') {
+            try {
+              return new Intl.DateTimeFormat(locale, {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              }).format(d);
+            } catch (e) {
+              // 降级到简单格式
+              format = 'YYYY-MM-DD';
+            }
+          }
+          
           const year = d.getFullYear();
           const month = String(d.getMonth() + 1).padStart(2, '0');
           const day = String(d.getDate()).padStart(2, '0');
+          const hours = String(d.getHours()).padStart(2, '0');
+          const minutes = String(d.getMinutes()).padStart(2, '0');
+          const seconds = String(d.getSeconds()).padStart(2, '0');
           
           return format
             .replace('YYYY', year)
             .replace('MM', month)
-            .replace('DD', day);
+            .replace('DD', day)
+            .replace('HH', hours)
+            .replace('mm', minutes)
+            .replace('ss', seconds);
         },
+        
+        // 数组处理
         sum: (array) => {
           sandbox.__checkTimeout();
           if (!Array.isArray(array)) return 0;
@@ -897,10 +1055,117 @@ const executeJavaScriptInSandbox = (code) => {
           }
           return result;
         },
+        
         avg: (array) => {
           sandbox.__checkTimeout();
           if (!Array.isArray(array) || array.length === 0) return 0;
           return sandbox.utils.sum(array) / array.length;
+        },
+        
+        // 统计相关
+        median: (array) => {
+          sandbox.__checkTimeout();
+          if (!Array.isArray(array) || array.length === 0) return 0;
+          
+          const sorted = [...array].sort((a, b) => a - b);
+          const mid = Math.floor(sorted.length / 2);
+          
+          return sorted.length % 2 === 0
+            ? (sorted[mid - 1] + sorted[mid]) / 2
+            : sorted[mid];
+        },
+        
+        // 字符串处理
+        truncate: (str, maxLength = 100, suffix = '...') => {
+          sandbox.__checkTimeout();
+          if (typeof str !== 'string') return '';
+          return str.length <= maxLength
+            ? str
+            : str.slice(0, maxLength) + suffix;
+        },
+        
+        // 数据分析函数
+        groupBy: (array, key) => {
+          sandbox.__checkTimeout();
+          if (!Array.isArray(array)) return {};
+          
+          return array.reduce((result, item) => {
+            sandbox.__checkTimeout();
+            const groupKey = typeof key === 'function' ? key(item) : item[key];
+            if (!result[groupKey]) result[groupKey] = [];
+            result[groupKey].push(item);
+            return result;
+          }, {});
+        },
+        
+        // 排序函数
+        sort: (array, options = {}) => {
+          sandbox.__checkTimeout();
+          if (!Array.isArray(array)) return [];
+          
+          const { 
+            key = null,
+            direction = 'asc',
+            type = 'auto'
+          } = options;
+          
+          const dirMod = direction.toLowerCase() === 'desc' ? -1 : 1;
+          
+          const sortedArray = [...array].sort((a, b) => {
+            sandbox.__checkTimeout();
+            let valA = key ? a[key] : a;
+            let valB = key ? b[key] : b;
+            
+            if (type === 'number') {
+              return (Number(valA) - Number(valB)) * dirMod;
+            } else if (type === 'string') {
+              return String(valA).localeCompare(String(valB)) * dirMod;
+            } else if (type === 'date') {
+              return (new Date(valA).getTime() - new Date(valB).getTime()) * dirMod;
+            } else {
+              // auto - 自动检测类型
+              if (typeof valA === 'number' && typeof valB === 'number') {
+                return (valA - valB) * dirMod;
+              } else if (valA instanceof Date && valB instanceof Date) {
+                return (valA.getTime() - valB.getTime()) * dirMod;
+              } else {
+                return String(valA).localeCompare(String(valB)) * dirMod;
+              }
+            }
+          });
+          
+          return sortedArray;
+        }
+      },
+      
+      // 提供高级计算工具
+      math: {
+        // 高级数学函数
+        ...Math,
+        sum: (...args) => {
+          sandbox.__checkTimeout();
+          if (args.length === 1 && Array.isArray(args[0])) {
+            return args[0].reduce((sum, val) => sum + (Number(val) || 0), 0);
+          }
+          return args.reduce((sum, val) => sum + (Number(val) || 0), 0);
+        },
+        avg: (...args) => {
+          sandbox.__checkTimeout();
+          const values = args.length === 1 && Array.isArray(args[0]) ? args[0] : args;
+          return sandbox.math.sum(values) / values.length;
+        },
+        round: (value, decimals = 0) => {
+          sandbox.__checkTimeout();
+          const factor = Math.pow(10, decimals);
+          return Math.round(value * factor) / factor;
+        },
+        rangeCheck: (value, min, max) => {
+          sandbox.__checkTimeout();
+          return Math.min(Math.max(value, min), max);
+        },
+        randomInt: (min, max) => {
+          sandbox.__checkTimeout();
+          return Math.floor(Math.random() * (max - min + 1)) + min;
         }
       },
       
@@ -910,7 +1175,20 @@ const executeJavaScriptInSandbox = (code) => {
       navigator: null,
       location: null,
       fetch: null,
-      XMLHttpRequest: null
+      XMLHttpRequest: null,
+      Worker: null,
+      WebSocket: null,
+      localStorage: null,
+      sessionStorage: null,
+      indexedDB: null,
+      Proxy: null,
+      eval: null,
+      globalThis: null,
+      global: null,
+      process: null,
+      require: null,
+      module: null,
+      exports: null
     };
     
     // 如果有循环或递归，修改代码注入超时检查
@@ -969,8 +1247,20 @@ const executeJavaScriptInSandbox = (code) => {
         `);
       }
       
+      // 执行前记录性能
+      const execStart = performance.now();
+      
       // 执行函数并获取结果
       const result = sandboxFunction(...sandboxValues);
+      
+      // 执行后记录性能
+      const execTime = performance.now() - execStart;
+      console.log(`代码执行耗时: ${execTime.toFixed(2)}ms`);
+      
+      // 检查内存警告
+      if (memoryWarnings.length > 0) {
+        console.warn('内存使用警告:', memoryWarnings);
+      }
       
       // 再次检查是否超时
       if (isTimedOut) {
@@ -978,20 +1268,42 @@ const executeJavaScriptInSandbox = (code) => {
       }
       
       // 格式化结果
-      if (result === undefined || result === null) {
-        return ''; // 没有返回值则显示空
+      if (result === undefined) {
+        return ''; // undefined显示为空
+      } else if (result === null) {
+        return 'null'; // null特殊显示
       } else if (typeof result === 'object') {
         try {
-          return JSON.stringify(result);
+          // 美化JSON输出
+          return JSON.stringify(result, null, 2);
         } catch (e) {
-          return String(result);
+          return `[无法序列化的对象: ${e.message}]`;
         }
+      } else if (typeof result === 'function') {
+        return `[函数: ${result.name || '匿名'}]`;
       } else {
         return result;
       }
     } catch (e) {
       console.error('JavaScript执行错误:', e);
-      return `#JS_ERROR! ${e.message}`;
+      
+      // 增强的错误报告
+      let errorMessage = e.message;
+      let errorType = e.name || 'Error';
+      let suggestion = '';
+      
+      // 常见错误类型检测和建议
+      if (e instanceof ReferenceError) {
+        suggestion = '检查变量名是否拼写正确，确保所有变量都已定义。';
+      } else if (e instanceof SyntaxError) {
+        suggestion = '检查代码语法，确保括号、引号和语法结构完整。';
+      } else if (e instanceof TypeError) {
+        suggestion = '检查对象类型，确保调用的方法或属性与对象类型匹配。';
+      } else if (e instanceof RangeError) {
+        suggestion = '检查数值范围，可能存在数组索引越界或递归过深。';
+      }
+      
+      return `#JS_ERROR! [${errorType}] ${errorMessage}${suggestion ? '\n提示: ' + suggestion : ''}`;
     }
   } catch (e) {
     console.error('沙箱创建错误:', e);
