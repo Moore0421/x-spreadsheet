@@ -164,11 +164,9 @@ body {
   box-shadow: 1px 2px 5px 2px rgba(51, 51, 51, 0.15);
 }
 .x-spreadsheet-dropdown.bottom-left .x-spreadsheet-dropdown-content {
-  top: calc(100% + 5px);
   left: 0;
 }
 .x-spreadsheet-dropdown.bottom-right .x-spreadsheet-dropdown-content {
-  top: calc(100% + 5px);
   right: 0;
 }
 .x-spreadsheet-dropdown.top-left .x-spreadsheet-dropdown-content {
@@ -670,7 +668,6 @@ body {
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
   position: absolute;
   left: 0;
-  top: calc(100% + 5px);
   z-index: 10;
   width: auto;
 }

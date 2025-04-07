@@ -11,18 +11,58 @@ import { tf } from "../locale/locale";
 class DropdownMore extends Dropdown {
   constructor(click) {
     const icon = new Icon("ellipsis");
-    super(icon, "auto", false, "top-left");
+    super(icon, "auto", false, "bottom-left");
     this.contentClick = click;
+    
+    // 修改下拉菜单的样式
+    this.contentEl.css({
+      "z-index": "9999",
+      "position": "fixed",
+      "background": "#fff",
+      "box-shadow": "0 -2px 6px rgba(0,0,0,0.15)",
+      "min-width": "120px",
+      "max-height": "300px",
+      "overflow-y": "auto",
+      "border-radius": "4px"
+    });
+
+    // 添加点击事件处理
+    this.headerEl.on("click", (evt) => {
+      evt.stopPropagation();
+      const rect = this.headerEl.el.getBoundingClientRect();
+      this.contentEl.css({
+        "bottom": `${window.innerHeight - rect.top + window.scrollY}px`,
+        "left": `${rect.left}px`
+      });
+    });
   }
 
   reset(items) {
+    if (!items || items.length === 0) {
+      this.setContentChildren(
+        h("div", `${cssPrefix}-item disabled`)
+          .css("padding", "5px 10px")
+          .css("color", "#999")
+          .child("无可用选项")
+      );
+      return;
+    }
+    
     const eles = items.map((it, i) =>
       h("div", `${cssPrefix}-item`)
+        .css("padding", "5px 10px")
+        .css("cursor", "pointer")
         .css("width", "150px")
         .css("font-weight", "normal")
         .on("click", () => {
           this.contentClick(i);
           this.hide();
+        })
+        .on("mouseover", function() {
+          this.css("background", "#f3f3f3");
+        })
+        .on("mouseout", function() {
+          this.css("background", "none");
         })
         .child(it)
     );
@@ -86,6 +126,9 @@ export default class Bottombar {
     this.items = [];
     this.isInput = false;
     this.moreEl = new DropdownMore((i) => {
+      console.log('DropdownMore clicked:', i);
+      console.log('Current items:', this.items);
+      console.log('Current dataNames:', this.dataNames);
       this.clickSwap2(this.items[i]);
     });
     this.contextMenu = new ContextMenu();
@@ -243,6 +286,13 @@ export default class Bottombar {
     this.clickSwap(item);
     this.activeEl.toggle();
     this.swapFunc(index);
+    
+    // 重置滚动位置
+    const container = document.querySelector(`.x-spreadsheet-sheet`);
+    if (container) {
+      container.scrollLeft = 0;
+      container.scrollTop = 0;
+    }
   }
 
   clickSwap(item) {

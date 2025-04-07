@@ -368,11 +368,7 @@ export default class DataProxy {
     this.styles = []; // Array<Style>
     this.merges = new Merges(); // [CellRange, ...]
     this.rows = new Rows(this, this.settings.row, this.settings);
-    const mergedColSettings = {
-      ...defaultSettings.col,
-      ...(settings.col || {})
-    };
-    this.cols = new Cols(mergedColSettings);
+    this.cols = new Cols(this.settings.col);
     this.sheetConfig = new SheetConfig(this.name, this.settings);
     this.cellConfig = new CellConfig(this.name, this.settings);
     this.validations = new Validations();

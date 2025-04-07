@@ -113,17 +113,25 @@ async function getDataFromServer() {
     );
     const { count, success } = await countResponse.json();
     if (!success) return {};
-    // 先获取第一个表格
-    document.getElementById("loading-num").textContent = "正在加载第1个表格";
-    const firstSheetResponse = await fetch(
-      "http://119.91.209.28:3000/api/getSheet?id=" + id + "&index=0"
-    );
-    const firstSheetData = await firstSheetResponse.json();
-    if (!firstSheetData.success) return {};
-    // 创建只包含第一个表格的数组
-    const sheets = [firstSheetData.sheet];
-    // 异步加载其他表格
-    loadRemainingSheets(id, count, sheets);
+    // 循环获取表格
+    let sheets = [];
+    for (let i = 0; i < count; i++) {
+      try {
+        document.getElementById("loading-num").textContent =
+          "正在加载第" + (i + 1) + "个表格";
+        const response = await fetch(
+          "http://119.91.209.28:3000/api/getSheet?id=" + id + "&index=" + i
+        );
+        const data = await response.json();
+        if (data.success) {
+          // 在数组后面添加新表格
+          sheets.push(data.sheet);
+        }
+      } catch (error) {
+        console.error("加载第" + i + "个表格失败:", error);
+      }
+    }
+    hideLoading();
     return sheets;
   } catch (error) {
     console.error("获取数据失败:", error);
@@ -194,31 +202,6 @@ function getPureData() {
     }
   });
   return pureData;
-}
-
-// 异步加载剩余表格
-async function loadRemainingSheets(id, totalCount, sheets) {
-  let allSheets = [...sheets];
-  // 从第二个表格开始依次加载
-  for (let i = 1; i < totalCount; i++) {
-    try {
-      document.getElementById("loading-num").textContent =
-        "正在加载第" + (i + 1) + "个表格";
-      const response = await fetch(
-        "http://119.91.209.28:3000/api/getSheet?id=" + id + "&index=" + i
-      );
-      const data = await response.json();
-      if (data.success) {
-        // 在数组后面添加新表格
-        allSheets = [...allSheets, data.sheet];
-        // 通知 x-spreadsheet 更新数据
-        xs.loadData([...allSheets]);
-      }
-    } catch (error) {
-      console.error("加载第" + i + "个表格失败:", error);
-    }
-  }
-  hideLoading();
 }
 
 // 创建文件输入元素
@@ -357,29 +340,32 @@ async function processRow(row, sheetIndex) {
 // 优化表格数据
 function optimizeSheetData() {
   const allData = xs.getData();
-  
-  allData.forEach(sheet => {
+
+  allData.forEach((sheet) => {
     // 优化rows - 处理连续空对象
     const rows = sheet.rows;
     let emptyCount = 0;
     let lastValidRow = 0;
     let emptyStartKey = 0;
-    
+
     // 找出连续5个空行后的位置
-    const rowKeys = Object.keys(rows).filter(key => key !== 'len').map(Number).sort((a, b) => a - b);
+    const rowKeys = Object.keys(rows)
+      .filter((key) => key !== "len")
+      .map(Number)
+      .sort((a, b) => a - b);
     for (let i = 0; i < rowKeys.length; i++) {
       const key = rowKeys[i];
       const row = rows[key];
-      
+
       // 检查是否为空对象（没有cells或cells为空对象）
       const isEmpty = !row || !row.cells || Object.keys(row.cells).length === 0;
-      
+
       if (isEmpty) {
         if (emptyCount === 0) {
           emptyStartKey = key;
         }
         emptyCount++;
-        
+
         if (emptyCount >= 5) {
           // 找到了连续5个空对象的位置
           emptyStartKey = key;
@@ -391,28 +377,33 @@ function optimizeSheetData() {
         lastValidRow = key;
       }
     }
-    
+
     // 如果有连续5个空对象以上，设置新的len
     if (emptyCount >= 5) {
       // 删除第五个空对象后的所有空对象
-      rowKeys.forEach(key => {
-        if (key > emptyStartKey && (rows[key] === undefined || !rows[key].cells || Object.keys(rows[key].cells).length === 0)) {
+      rowKeys.forEach((key) => {
+        if (
+          key > emptyStartKey &&
+          (rows[key] === undefined ||
+            !rows[key].cells ||
+            Object.keys(rows[key].cells).length === 0)
+        ) {
           delete rows[key];
         }
       });
-      
+
       // 设置新的len为第五个空对象的key+1
       rows.len = emptyStartKey + 1;
     } else {
       // 没有连续5个空对象，使用最后一个有效行+5作为len
       rows.len = lastValidRow + 6;
     }
-    
+
     // 优化cols - 计算需要的列数
     let maxColNeeded = 10; // 默认最小值
-    
-    Object.keys(rows).forEach(rowKey => {
-      if (rowKey !== 'len' && rows[rowKey] && rows[rowKey].cells) {
+
+    Object.keys(rows).forEach((rowKey) => {
+      if (rowKey !== "len" && rows[rowKey] && rows[rowKey].cells) {
         const cells = rows[rowKey].cells;
         if (Object.keys(cells).length > 0) {
           // 获取最后一列的索引
@@ -423,10 +414,10 @@ function optimizeSheetData() {
         }
       }
     });
-    
+
     // 设置cols.len为计算出的最大列数
     sheet.cols.len = maxColNeeded;
-    
+
     // 更新sheetConfig
     if (sheet.sheetConfig && sheet.sheetConfig.settings) {
       sheet.sheetConfig.settings.row.len = rows.len;
@@ -437,7 +428,7 @@ function optimizeSheetData() {
       sheet.sheetConfig.settings = sheet.sheetConfig.settings || {};
       sheet.sheetConfig.settings.row = sheet.sheetConfig.settings.row || {};
       sheet.sheetConfig.settings.col = sheet.sheetConfig.settings.col || {};
-      
+
       sheet.sheetConfig.settings.row.len = rows.len;
       sheet.sheetConfig.settings.col.len = maxColNeeded;
     }

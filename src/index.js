@@ -184,38 +184,23 @@ class Spreadsheet {
   loadData(data) {
     this.reset();
     const ds = Array.isArray(data) ? data : [data];
-    
     if (this.bottombar !== null) {
       this.bottombar.clear();
     }
     this.datas = [];
-    
     if (ds.length > 0) {
       for (let i = 0; i < ds.length; i += 1) {
         const it = ds[i];
-        // 合并列配置到sheetConfig
-        if (it.cols) {
-          it.sheetConfig = {
-            ...(it.sheetConfig || {}),
-            settings: {
-              ...(it.sheetConfig?.settings || {}),
-              col: {
-                ...this.options.col, // 保留默认配置
-                len: it.cols.len     // 使用数据中的列数
-              }
-            }
-          };
+        // 确保列数存在于sheetConfig中
+        if (it.sheetConfig && it.sheetConfig.settings && it.cols) {
+          it.sheetConfig.settings.col.len = it.cols.len;
         }
-        
         const nd = this.addSheet(it.name, i === 0);
         nd.setData(it);
-        
-        // 显式设置列数（兼容旧数据格式）
-        if (it.cols?.len) {
+        // 明确设置列数，确保它被正确保存
+        if (it.cols && it.cols.len) {
           nd.cols.len = it.cols.len;
-          nd.cols.minWidth = it.cols.minWidth || this.options.col.minWidth;
         }
-        
         if (i === 0) {
           this.sheet.resetData(nd);
         }
