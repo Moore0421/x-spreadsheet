@@ -15,6 +15,13 @@ class Cols {
       delete d.len;
     }
     this._ = d;
+    // 确保列数至少是最大列索引+1
+    Object.keys(this._).forEach(ci => {
+      const index = parseInt(ci, 10);
+      if (!isNaN(index) && index >= this.len) {
+        this.len = index + 1;
+      }
+    });
   }
 
   getData() {

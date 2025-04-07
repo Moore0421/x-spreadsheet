@@ -229,36 +229,41 @@ export default class ContextMenu {
     unbindClickoutside(el);
   }
 
-  setPosition(x, y) {
+  show(evt) {
+    // 在预览模式下禁用右键菜单
+    if (this.sheet?.data?.settings?.mode === 'preview') {
+      return;
+    }
+    
     const { sheet } = this;
     const { selector } = sheet.data;
     const cell = sheet.data.getCell(sheet.data.selector.ri, sheet.data.selector.ci);
     
-    // 如果单元格不可编辑,隐藏右键菜单
-    if (cell && cell.editable === false) {
+    // 如果单元格不可编辑且不是设计模式，隐藏右键菜单
+    if (cell && cell.editable === false && sheet.data.settings.mode !== 'design') {
       this.hide();
       return;
     }
 
-    this.lastCoordinate = { x, y };
+    this.lastCoordinate = { x: evt.offsetX, y: evt.offsetY };
     if (this.isHide) return;
     const { el } = this;
     handleDynamicMenu.call(this);
     const { width } = el.show().offset();
     const view = this.viewFn();
     const vhf = view.height / 2;
-    let left = x;
-    if (view.width - x <= width) {
+    let left = evt.offsetX;
+    if (view.width - evt.offsetX <= width) {
       left -= width;
     }
     el.css("left", `${left}px`);
-    if (y > vhf) {
-      el.css("bottom", `${view.height - y}px`)
-        .css("max-height", `${y}px`)
+    if (evt.offsetY > vhf) {
+      el.css("bottom", `${view.height - evt.offsetY}px`)
+        .css("max-height", `${evt.offsetY}px`)
         .css("top", "auto");
     } else {
-      el.css("top", `${y}px`)
-        .css("max-height", `${view.height - y}px`)
+      el.css("top", `${evt.offsetY}px`)
+        .css("max-height", `${view.height - evt.offsetY}px`)
         .css("bottom", "auto");
     }
     bindClickoutside(el);

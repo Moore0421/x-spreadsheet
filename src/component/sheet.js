@@ -328,7 +328,7 @@ function clearClipboard() {
 
 function copy(evt) {
   const { data, selector } = this;
-  if (data.settings.mode === "read") return;
+  if (data.settings.mode === "read" || data.settings.mode === "preview") return;
   data.copy();
   data.copyToSystemClipboard(evt);
   selector.showClipboard();
@@ -336,7 +336,7 @@ function copy(evt) {
 
 function cut() {
   const { data, selector } = this;
-  if (data.settings.mode === "read") return;
+  if (data.settings.mode === "read" || data.settings.mode === "preview") return;
   data.cut();
   selector.showClipboard();
 }
@@ -480,8 +480,23 @@ function editorSet() {
   const { editor, data } = this;
   if (editor.formulaCell) return;
   if (data.settings.mode === "read") return;
+  
+  // 在预览模式下检查单元格是否可编辑
+  const cell = data.getSelectedCell();
+  if ((data.settings.mode === "preview" || data.settings.mode === "normal") && cell && cell.editable === false) {
+    return;
+  }
+  
   editorSetOffset.call(this);
-  editor.setCell(data.getSelectedCell(), data.getSelectedValidator());
+  
+  // 如果cell为null，我们需要创建一个新的单元格
+  const selectedCell = data.getSelectedCell();
+  if (!selectedCell) {
+    const { ri, ci } = data.selector;
+    data.rows.getCellOrNew(ri, ci);
+  }
+  
+  editor.setCell(data.getSelectedCell() || {}, data.getSelectedValidator());
   clearClipboard.call(this);
 }
 
@@ -589,7 +604,8 @@ function dataSetCellText(text, state = "finished") {
 
 function insertDeleteRowColumn(type) {
   const { data } = this;
-  if (data.settings.mode === "read") return;
+  if (data.settings.mode === "read" || data.settings.mode === "preview") return;
+  
   if (type === "insert-row") {
     data.insert("row");
   } else if (type === "delete-row") {
@@ -720,14 +736,14 @@ function sheetInitEvents() {
       // the right mouse button: mousedown → contenxtmenu → mouseup
       if (evt.buttons === 2) {
         if (this.data.xyInSelectedRect(evt.offsetX, evt.offsetY)) {
-          contextMenu.setPosition(evt.offsetX, evt.offsetY);
+          contextMenu.show(evt);
         } else {
           overlayerMousedown.call(this, evt);
-          contextMenu.setPosition(evt.offsetX, evt.offsetY);
+          contextMenu.show(evt);
         }
         evt.stopPropagation();
       } else if (evt.detail === 2) {
-        editorSet.call(this);
+        this.dblclickHandler(evt);
       } else {
         overlayerMousedown.call(this, evt);
       }
@@ -1012,10 +1028,27 @@ function sheetInitEvents() {
         (keyCode >= 96 && keyCode <= 105) ||
         evt.key === "="
       ) {
+        // 在预览模式下检查单元格是否可编辑
+        const { data } = this;
+        const cell = data.getSelectedCell();
+        const mode = data.settings?.mode;
+        if ((mode === "preview" || mode === "normal" || mode === "read") && cell && cell.editable === false) {
+          return;
+        }
+        
         dataSetCellText.call(this, evt.key, "input");
         editorSet.call(this);
       } else if (keyCode === 113) {
         // F2
+        // 在预览模式下检查单元格是否可编辑
+        const { data } = this;
+        const cell = data.getSelectedCell();
+        const mode = data.settings?.mode;
+        if (mode === "preview" || mode === "normal" || mode === "read") {
+          if (cell && cell.editable === false) {
+            return;
+          }
+        }
         editorSet.call(this);
       }
     }
@@ -1107,6 +1140,11 @@ export default class Sheet {
     // init selector [0, 0]
     selectorSet.call(this, false, 0, 0);
     if (this.options.mode === "read") this.selector.hide();
+    
+    // 在预览模式下隐藏工具栏
+    if (options.mode === 'preview' && this.toolbar) {
+      this.toolbar.el.hide();
+    }
   }
 
   on(eventName, func) {
@@ -1211,5 +1249,23 @@ export default class Sheet {
       selectorSet.call(this, true, eri, eci, true, false);
     }
     scrollbarMove.call(this);
+  }
+
+  dblclickHandler(evt) {
+    const { data } = this;
+    // 双击时检查是否可编辑
+    const { ri, ci } = data.getCellRectByXY(evt.offsetX, evt.offsetY);
+    if (ri === -1 || ci === -1) return;
+    
+    const cell = this.data.getCell(ri, ci);
+    const mode = this.data.settings?.mode;
+    
+    // 如果是不可编辑单元格且不是设计模式，则阻止编辑
+    if (cell && cell.editable === false && mode === 'preview') {
+      return;
+    }
+    
+    // 不需要传递参数，editorSet会自动获取选中的单元格
+    editorSet.call(this);
   }
 }

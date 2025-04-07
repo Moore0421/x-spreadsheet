@@ -14,6 +14,10 @@ import { getPeople, getProducts } from "./functions/custom_functions";
 class Spreadsheet {
 
   constructor(selectors, options = {}) {
+    // 检查URL参数
+    const urlParams = new URLSearchParams(window.location.search);
+    const mode = urlParams.get('mode');
+    
     let targetEl = selectors;
     this.options = {
       showBottomBar: true,
@@ -22,8 +26,20 @@ class Spreadsheet {
         indicatorColor: "purple",
         authorName: "User",
       },
+      mode: mode === 'design' ? 'design' : (mode === 'preview' ? 'preview' : 'normal'),
       ...options,
     };
+    
+    // 如果URL参数指定了mode，覆盖传入的options
+    if (mode === 'design' || mode === 'preview') {
+      this.options.mode = mode;
+    }
+    
+    // 预览模式下隐藏工具栏
+    if (this.options.mode === 'preview') {
+      this.options.showToolbar = false;
+    }
+    
     if (options.comment) {
       this.options.comment.indicatorColor =
         options.comment.indicatorColor ?? "purple";
@@ -168,18 +184,45 @@ class Spreadsheet {
   loadData(data) {
     this.reset();
     const ds = Array.isArray(data) ? data : [data];
+    
     if (this.bottombar !== null) {
       this.bottombar.clear();
     }
     this.datas = [];
+    
     if (ds.length > 0) {
       for (let i = 0; i < ds.length; i += 1) {
         const it = ds[i];
+        // 合并列配置到sheetConfig
+        if (it.cols) {
+          it.sheetConfig = {
+            ...(it.sheetConfig || {}),
+            settings: {
+              ...(it.sheetConfig?.settings || {}),
+              col: {
+                ...this.options.col, // 保留默认配置
+                len: it.cols.len     // 使用数据中的列数
+              }
+            }
+          };
+        }
+        
         const nd = this.addSheet(it.name, i === 0);
         nd.setData(it);
+        
+        // 显式设置列数（兼容旧数据格式）
+        if (it.cols?.len) {
+          nd.cols.len = it.cols.len;
+          nd.cols.minWidth = it.cols.minWidth || this.options.col.minWidth;
+        }
+        
         if (i === 0) {
           this.sheet.resetData(nd);
         }
+      }
+      // 在所有表格加载完成后重置当前表格，确保设置生效
+      if (this.datas.length > 0) {
+        this.selectSheet(0);
       }
     }
     return this;
@@ -290,6 +333,26 @@ class Spreadsheet {
   initCustomFunctions() {
     this.sheet.data.variables.registerFunction('getPeople', getPeople);
     this.sheet.data.variables.registerFunction('getProducts', getProducts);
+  }
+
+  // 添加模式切换方法
+  switchMode(mode) {
+    if (mode !== 'design' && mode !== 'preview' && mode !== 'normal') {
+      return;
+    }
+    
+    this.options.mode = mode;
+    this.data.settings.mode = mode;
+  
+    // 处理工具栏显示/隐藏
+    if (mode === 'preview' && this.toolbar) {
+      this.toolbar.el.hide();
+    } else if (this.toolbar) {
+      this.toolbar.el.show();
+    }
+  
+    // 重新渲染表格
+    this.sheet.table.render();
   }
 }
 

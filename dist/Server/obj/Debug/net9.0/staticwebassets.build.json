@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "nyUl4v61vge96V7fBnWyT36nHiGJjAw+ImA9AbsTq3g=",
+  "Source": "SpreadsheetServer",
+  "BasePath": "_content/SpreadsheetServer",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}

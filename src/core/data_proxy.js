@@ -102,12 +102,12 @@ const defaultSettings = {
   showContextmenu: true,
   showBottomBar: true,
   row: {
-    len: 100,
+    len: 40,
     height: DEFAULT_ROW_HEIGHT,
     minHeight: DEFAULT_ROW_HEIGHT,
   },
   col: {
-    len: 26,
+    len: 40,
     width: 100,
     indexWidth: 60,
     minWidth: 60,
@@ -355,21 +355,30 @@ function getCellColByX(x, scrollOffsetx) {
 }
 
 export default class DataProxy {
-  constructor(rootContext, name, settings) {
+  constructor(parent, name, settings) {
+    this.parent = parent;
+    this.name = name;
     this.settings = helper.merge(defaultSettings, settings || {});
+    // 初始化时如果没有mode，设置为normal
+    if (!this.settings.mode) {
+      this.settings.mode = 'normal';
+    }
     // save data begin
-    this.name = name || "sheet";
     this.freeze = [0, 0];
     this.styles = []; // Array<Style>
     this.merges = new Merges(); // [CellRange, ...]
     this.rows = new Rows(this, this.settings.row, this.settings);
-    this.cols = new Cols(this.settings.col);
+    const mergedColSettings = {
+      ...defaultSettings.col,
+      ...(settings.col || {})
+    };
+    this.cols = new Cols(mergedColSettings);
     this.sheetConfig = new SheetConfig(this.name, this.settings);
     this.cellConfig = new CellConfig(this.name, this.settings);
     this.validations = new Validations();
     this.hyperlinks = {};
     this.comments = {};
-    this.variables = new Variable(rootContext);
+    this.variables = new Variable(parent);
     // save data end
 
     // don't save object
@@ -382,7 +391,7 @@ export default class DataProxy {
     this.exceptRowSet = new Set();
     this.sortedRowMap = new Map();
     this.unsortedRowMap = new Map();
-    this.rootContext = rootContext;
+    this.rootContext = parent;
     this.sheetId = this.sheetConfig.sheetId ?? generateUniqueId();
   }
 
@@ -856,7 +865,7 @@ export default class DataProxy {
             }
             cstyle[property] = value;
             cell.style = this.addStyle(cstyle);
-          } else if (property === "editable") {
+          } else if (property === "editable" || this.settings.mode === 'design') {
             cell[property] = value;
             cell.cellMeta = cell?.cellMeta ?? {};
             cell.cellMeta[property] = value;
@@ -1528,7 +1537,7 @@ export default class DataProxy {
   }
 
   // state: input | finished
-  setCellText(ri, ci, text, state) {
+  setCellText(ri, ci, text, state = 'finished') {
     const { rows, history, validations } = this;
     // console.log("setCellText:", ri, ci, text, state);
     if (state === "finished") {
@@ -1770,6 +1779,10 @@ export default class DataProxy {
         property === "sheetConfig"
       ) {
         this[property].setData(d[property]);
+        // 确保列数被正确设置
+        if (property === "cols" && d[property] && d[property].len) {
+          this.cols.len = d[property].len;
+        }
       } else if (property === "freeze") {
         const [x, y] = expr2xy(d[property]);
         this.freeze = [y, x];
@@ -1966,5 +1979,23 @@ export default class DataProxy {
         this.setRowId(sri, newId);
       }
     }, currentId); // 传入当前ID作为默认值
+  }
+
+  // 检查单元格是否可编辑
+  canEditCell(ri, ci) {
+    const cell = this.getCell(ri, ci);
+    const mode = this.settings?.mode;
+    
+    // 在设计模式下，所有单元格都可编辑
+    if (mode === 'design') {
+      return true;
+    }
+    
+    // 在其他模式下，遵循单元格的nonEditable属性
+    return !cell || !cell.nonEditable;
+  }
+
+  getValidator(ri, ci) {
+    return this.validations.get(ri, ci); // 或类似逻辑
   }
 }

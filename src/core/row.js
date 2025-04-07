@@ -119,7 +119,7 @@ class Rows {
   setCellText(ri, ci, text) {
     // console.log("setCellText:", ri, ci, text);
     const cell = this.getCellOrNew(ri, ci);
-    if (cell.editable !== false) {
+    if (cell.editable !== false || this.data.settings.mode === 'design') {
       // console.log("setCellText-editable:", ri, ci, text);
       const valueSetter = this.options.valueSetter;
       if (valueSetter) {
@@ -375,7 +375,7 @@ class Rows {
     const row = this.get(ri);
     if (row !== null) {
       const cell = this.getCell(ri, ci);
-      if (cell !== null && cell.editable !== false) {
+      if (cell !== null && (cell.editable !== false || this.data.settings.mode === 'design')) {
         if (what === "all") {
           delete row.cells[ci];
         } else if (what === "text") {

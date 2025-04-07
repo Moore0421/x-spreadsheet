@@ -354,6 +354,98 @@ async function processRow(row, sheetIndex) {
   return updatedCells;
 }
 
+// 优化表格数据
+function optimizeSheetData() {
+  const allData = xs.getData();
+  
+  allData.forEach(sheet => {
+    // 优化rows - 处理连续空对象
+    const rows = sheet.rows;
+    let emptyCount = 0;
+    let lastValidRow = 0;
+    let emptyStartKey = 0;
+    
+    // 找出连续5个空行后的位置
+    const rowKeys = Object.keys(rows).filter(key => key !== 'len').map(Number).sort((a, b) => a - b);
+    for (let i = 0; i < rowKeys.length; i++) {
+      const key = rowKeys[i];
+      const row = rows[key];
+      
+      // 检查是否为空对象（没有cells或cells为空对象）
+      const isEmpty = !row || !row.cells || Object.keys(row.cells).length === 0;
+      
+      if (isEmpty) {
+        if (emptyCount === 0) {
+          emptyStartKey = key;
+        }
+        emptyCount++;
+        
+        if (emptyCount >= 5) {
+          // 找到了连续5个空对象的位置
+          emptyStartKey = key;
+          break;
+        }
+      } else {
+        // 不是空对象，重置计数
+        emptyCount = 0;
+        lastValidRow = key;
+      }
+    }
+    
+    // 如果有连续5个空对象以上，设置新的len
+    if (emptyCount >= 5) {
+      // 删除第五个空对象后的所有空对象
+      rowKeys.forEach(key => {
+        if (key > emptyStartKey && (rows[key] === undefined || !rows[key].cells || Object.keys(rows[key].cells).length === 0)) {
+          delete rows[key];
+        }
+      });
+      
+      // 设置新的len为第五个空对象的key+1
+      rows.len = emptyStartKey + 1;
+    } else {
+      // 没有连续5个空对象，使用最后一个有效行+5作为len
+      rows.len = lastValidRow + 6;
+    }
+    
+    // 优化cols - 计算需要的列数
+    let maxColNeeded = 10; // 默认最小值
+    
+    Object.keys(rows).forEach(rowKey => {
+      if (rowKey !== 'len' && rows[rowKey] && rows[rowKey].cells) {
+        const cells = rows[rowKey].cells;
+        if (Object.keys(cells).length > 0) {
+          // 获取最后一列的索引
+          const lastColIndex = Math.max(...Object.keys(cells).map(Number));
+          // 取整（8取10, 14取20）
+          const roundedValue = Math.ceil(lastColIndex / 10) * 10;
+          maxColNeeded = Math.max(maxColNeeded, roundedValue);
+        }
+      }
+    });
+    
+    // 设置cols.len为计算出的最大列数
+    sheet.cols.len = maxColNeeded;
+    
+    // 更新sheetConfig
+    if (sheet.sheetConfig && sheet.sheetConfig.settings) {
+      sheet.sheetConfig.settings.row.len = rows.len;
+      sheet.sheetConfig.settings.col.len = maxColNeeded;
+    } else {
+      // 如果sheetConfig不存在，创建它
+      sheet.sheetConfig = sheet.sheetConfig || {};
+      sheet.sheetConfig.settings = sheet.sheetConfig.settings || {};
+      sheet.sheetConfig.settings.row = sheet.sheetConfig.settings.row || {};
+      sheet.sheetConfig.settings.col = sheet.sheetConfig.settings.col || {};
+      
+      sheet.sheetConfig.settings.row.len = rows.len;
+      sheet.sheetConfig.settings.col.len = maxColNeeded;
+    }
+  });
+
+  return allData;
+}
+
 // 初始化表格
 async function load() {
   showLoading();
@@ -375,16 +467,13 @@ async function load() {
     showToolbar: true,
     showGrid: true,
     showBottomBar: true,
-    col: {
-      len: 80, // 设置到80列
-    },
     extendToolbar: {
       left: [
         {
           tip: "保存",
           icon: saveIcon,
           onClick: async (_data, _sheet) => {
-            await saveToServer(xs.getData(), false);
+            await saveToServer(optimizeSheetData(), false);
           },
         },
         {

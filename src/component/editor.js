@@ -80,8 +80,20 @@ function mentionMenuSearch(text) {
 
 function inputEventHandler(evt) {
   const v = evt.target.value;
+  const { cell, ri, ci, data } = this;
+  
+  // 如果单元格不可编辑且不是设计模式，则阻止输入
+  if (cell && cell.editable === false && data.settings?.mode !== 'design') {
+    return;
+  }
+  
+  // 其他处理逻辑保持不变
+  this.inputText = v;
+  if (evt.type === 'input') {
+    this.change("input", v);
+  }
+  
   const { suggest, textlineEl, validator, mention, trigger } = this;
-  const { cell } = this;
   if (cell !== null) {
     if (validator) {
       // 如果是下拉列表类型
@@ -102,9 +114,9 @@ function inputEventHandler(evt) {
   if (cell !== null) {
     if (
       ("editable" in cell && cell.editable === true) ||
-      cell.editable === undefined
+      cell.editable === undefined ||
+      data.settings.mode === 'design'
     ) {
-      this.inputText = v;
       if (validator) {
         if (validator.type === "list") {
           suggest.search(v);
@@ -129,12 +141,10 @@ function inputEventHandler(evt) {
       }
       textlineEl.html(v);
       resetTextareaSize.call(this);
-      this.change("input", v);
     } else {
       evt.target.value = cell.text ?? "";
     }
   } else {
-    this.inputText = v;
     if (validator) {
       if (validator.type === "list") {
         suggest.search(v);
@@ -159,7 +169,6 @@ function inputEventHandler(evt) {
     }
     textlineEl.html(v);
     resetTextareaSize.call(this);
-    this.change("input", v);
   }
 }
 
@@ -355,16 +364,24 @@ export default class Editor {
   }
 
   setCell(cell, validator) {
-    // 不可编辑的单元格直接返回,不显示编辑器
-    if (cell && cell.editable === false) {
-      this.el.hide();
+    // 检查是否在预览模式且单元格不可编辑
+    const { data } = this;
+    if ((data.settings.mode === 'preview' || data.settings.mode === 'normal' || data.settings.mode === 'read') && cell && cell.editable === false) {
       return;
     }
+
+    const { el, textEl, textlineEl } = this;
+    
+    // 确保cell至少是一个空对象
+    cell = cell || {};
+    this.cell = cell;
+    const { ri, ci } = data?.selector || {};
+    this.ri = ri;
+    this.ci = ci;
     
     const editValueFormatter = this.options.editValueFormatter;
-    const { el, datepicker, suggest } = this;
+    const { datepicker, suggest } = this;
     el.show();
-    this.cell = cell ?? {};
     let text = "";
     if (editValueFormatter) {
       text = editValueFormatter({ ...this, cell }) ?? cell?.text ?? "";
@@ -372,21 +389,25 @@ export default class Editor {
       text = cell?.f || (cell?.text ?? "");
     }
     this.setText(text);
-    this.validator = validator;
-    if (validator) {
-      const { type } = validator;
-      if (type === "date") {
-        datepicker.show();
-        if (!/^\s*$/.test(text)) {
-          datepicker.setValue(text);
-        }
-      }
-      if (type === "list") {
-        suggest.setItems(validator.values());
-        suggest.search("");
-      }
+    
+    // 添加安全检查，确保validations存在且有getValidator方法
+    if (data && data.validations && typeof data.validations.getValidator === 'function') {
+      this.validator = validator;
+    } else {
+      this.validator = null; // 如果方法不存在，设置为null
     }
-    //Added this code to call input handle when we are manually setting value to editor input field
+    
+    // 在设计模式下，即使是不可编辑单元格也可以编辑
+    if (data.settings.mode === 'design') {
+      textEl.removeAttr("readonly");
+    } else if (cell && cell.editable === false) {
+      textEl.attr("readonly", "readonly");
+    } else if (data && "editable" in data && data.editable === false) {
+      textEl.attr("readonly", "readonly");
+    } else {
+      textEl.removeAttr("readonly");
+    }
+    
     if (cell?.text?.length === 1) {
       inputEventHandler.call(this, { target: { value: text } });
     }
