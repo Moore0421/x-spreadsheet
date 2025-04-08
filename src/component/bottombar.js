@@ -58,12 +58,6 @@ class DropdownMore extends Dropdown {
           this.contentClick(i);
           this.hide();
         })
-        .on("mouseover", function() {
-          this.css("background", "#f3f3f3");
-        })
-        .on("mouseout", function() {
-          this.css("background", "none");
-        })
         .child(it)
     );
     this.setContentChildren(...eles);
