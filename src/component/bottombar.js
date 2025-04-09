@@ -110,7 +110,8 @@ export default class Bottombar {
     addFunc = () => {},
     swapFunc = () => {},
     deleteFunc = () => {},
-    updateFunc = () => {}
+    updateFunc = () => {},
+    options = {}
   ) {
     this.swapFunc = swapFunc;
     this.updateFunc = updateFunc;
@@ -127,7 +128,10 @@ export default class Bottombar {
     });
     this.contextMenu = new ContextMenu();
     this.contextMenu.itemClick = deleteFunc;
-    const menuChildrens = allowMultipleSheets
+    // 获取模式
+    const mode = options.mode || 'normal';
+    // 根据模式决定菜单子项
+    const menuChildrens = allowMultipleSheets && mode !== 'preview'
       ? [
           new Icon("add").on("click", () => {
             addFunc();
@@ -200,7 +204,7 @@ export default class Bottombar {
         this.clickSwap2(item);
       })
       .on("contextmenu", (evt) => {
-        if (options.mode === "read") return;
+        if (options.mode === "read" || options.mode === "preview") return;
         const { offsetLeft, offsetHeight } = evt.target;
         this.contextMenu.setOffset({
           left: offsetLeft,
@@ -209,7 +213,7 @@ export default class Bottombar {
         this.deleteEl = item;
       })
       .on("dblclick", () => {
-        if (options.mode === "read") return;
+        if (options.mode === "read" || options.mode === "preview") return;
         if (!this.isInput) {
           this.isInput = true;
           const oldValue = item.html();
@@ -272,6 +276,26 @@ export default class Bottombar {
   }
 
   deleteItem() {
+    const { activeEl, deleteEl } = this;
+    // 确保有多个工作表并且选择了要删除的工作表
+    if (this.items.length > 1 && deleteEl) {
+      const index = this.items.findIndex(it => it === deleteEl);
+      if (index > -1) {
+        this.items.splice(index, 1);
+        this.dataNames.splice(index, 1);
+        this.menuEl.removeChild(deleteEl.el);
+        this.moreEl.reset(this.dataNames);
+        
+        // 如果删除的是当前活动的工作表，则切换到第一个工作表
+        if (activeEl === deleteEl) {
+          const [f] = this.items;
+          this.activeEl = f;
+          this.activeEl.toggle();
+          return [index, 0];
+        }
+        return [index, -1];
+      }
+    }
     return [-1];
   }
 

@@ -86,7 +86,8 @@ class Spreadsheet {
           },
           (index, value) => {
             this.renameSheet(index, value);
-          }
+          },
+          { mode: this.options.mode }
         )
       : null;
     this.data = this.addSheet();

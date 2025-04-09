@@ -527,4 +527,11 @@ async function load() {
     .on("grid-load", (_text, _ri, _ci) => {
       console.log("grid-load", xs.sheet.data.getVariables());
     });
+
+  document.addEventListener('keydown', async function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault();
+      await saveToServer(optimizeSheetData(), false);
+    }
+  });
 }
