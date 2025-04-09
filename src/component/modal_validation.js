@@ -27,7 +27,8 @@ export default class ModalValidation extends Modal {
       required: true,
       pattern: /^([A-Z]{1,2}[1-9]\d*)(:[A-Z]{1,2}[1-9]\d*)?$/,
     });
-    const cf = new FormField(
+    rf.el.css("margin-top","30px")
+    const cf = new FormField( 
       new FormSelect(
         false,
         "list",
@@ -65,6 +66,7 @@ export default class ModalValidation extends Modal {
     const svf = new FormField(new FormInput("120px", "a,b,c"), {
       required: true,
     });
+    svf.el.css("margin-top","30px")
     const vf = new FormField(new FormInput("70px", "10"), {
       required: true,
       type: "number",
