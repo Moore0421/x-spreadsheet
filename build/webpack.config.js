@@ -51,12 +51,6 @@ module.exports = {
     ],
   },
   plugins: [
-    new MiniCssExtractPlugin(),
-    new CopyPlugin({
-      patterns: [
-        { from: "data.js", to: "data.js" },
-        { from: "server.js", to: "server.js" }
-      ],
-    }),
+    new MiniCssExtractPlugin()
   ],
 };

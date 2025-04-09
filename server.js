@@ -24,8 +24,8 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 // 修改 getFileName 方法
-function getFileName(id, pure) {
-  const fileName = pure
+function getFileName(id, isPureData) {
+  const fileName = isPureData
     ? `spreadsheet-data-pure-${id}.json`
     : `spreadsheet-data-${id}.json`;
   return path.join(DATA_DIR, fileName);
@@ -33,7 +33,7 @@ function getFileName(id, pure) {
 
 // 保存分片数据
 app.post("/api/chunk-upload", (req, res) => {
-  const { chunkIndex, totalChunks, id } = req.query;
+  const { chunkIndex, totalChunks, id, pure, do: action } = req.query;
   const data = JSON.stringify(req.body);
   const tempDir = path.join(__dirname, "temp");
 
@@ -46,53 +46,61 @@ app.post("/api/chunk-upload", (req, res) => {
 
   try {
     fs.writeFileSync(chunkPath, data);
-    res.json({
-      success: true,
-      chunkIndex,
-      message: `Chunk ${chunkIndex} of ${totalChunks} received`,
-    });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
+    
+    // 当pure为true时，表示这是最后一个分片，自动执行合并操作
+    if (pure === "true") {
+      console.log("接收到最后一个分片，开始自动合并...");
+      // 执行合并操作
+      const chunksCount = parseInt(totalChunks, 10);
+      const isPureData = action === "SavePureData";
+      const finalPath = getFileName(id, isPureData);
+      let rawData = "";
 
-// 合并分片
-app.post("/api/merge-chunks", (req, res) => {
-  const { id, totalChunks, pure } = req.query;
-  const chunksCount = parseInt(totalChunks, 10);
-  const tempDir = path.join(__dirname, "temp");
-  const finalPath = getFileName(id, pure === "true");
-  let rawData = "";
+      try {
+        console.log("开始合并，总分片数:", chunksCount);
 
-  try {
-    console.log("开始合并，总分片数:", chunksCount);
+        // 按顺序读取并合并所有分片
+        for (let i = 0; i < chunksCount; i++) {
+          const currentChunkPath = path.join(tempDir, `${id}-${i}`);
+          const chunkContent = fs.readFileSync(currentChunkPath, "utf8");
+          const chunkData = JSON.parse(chunkContent);
 
-    // 按顺序读取并合并所有分片
-    for (let i = 0; i < chunksCount; i++) {
-      const chunkPath = path.join(tempDir, `${id}-${i}`);
-      const chunkContent = fs.readFileSync(chunkPath, "utf8");
-      const chunkData = JSON.parse(chunkContent);
+          // 提取分片中的实际数据
+          if (chunkData && chunkData.data) {
+            rawData += chunkData.data;
+          }
 
-      // 提取分片中的实际数据
-      if (chunkData && chunkData.data) {
-        rawData += chunkData.data;
+          // 删除分片文件
+          fs.unlinkSync(currentChunkPath);
+        }
+
+        // 解析完整的JSON字符串
+        const finalData = JSON.parse(rawData);
+        console.log("合并后数据对象类型:", typeof finalData);
+
+        // 保存为格式化的JSON
+        fs.writeFileSync(finalPath, JSON.stringify(finalData, null, 2));
+        console.log("最终文件已保存");
+
+        res.json({ 
+          success: true, 
+          chunkIndex,
+          merged: true,
+          message: `Chunk ${chunkIndex} of ${totalChunks} received and all chunks merged successfully` 
+        });
+      } catch (error) {
+        console.error("合并错误:", error);
+        res.status(500).json({ success: false, error: error.message });
       }
-
-      // 删除分片文件
-      fs.unlinkSync(chunkPath);
+    } else {
+      // 正常返回分片接收成功的消息
+      res.json({
+        success: true,
+        chunkIndex,
+        message: `Chunk ${chunkIndex} of ${totalChunks} received`,
+      });
     }
-
-    // 解析完整的JSON字符串
-    const finalData = JSON.parse(rawData);
-    console.log("合并后数据对象类型:", typeof finalData);
-
-    // 保存为格式化的JSON
-    fs.writeFileSync(finalPath, JSON.stringify(finalData, null, 2));
-    console.log("最终文件已保存");
-
-    res.json({ success: true, message: "File merged successfully" });
   } catch (error) {
-    console.error("合并错误:", error);
     res.status(500).json({ success: false, error: error.message });
   }
 });

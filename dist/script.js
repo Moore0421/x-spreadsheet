@@ -15,7 +15,7 @@ async function getUrlParam(name) {
 }
 
 // 上传分片
-async function uploadChunk(chunk, chunkIndex, totalChunks, id, pure) {
+async function uploadChunk(chunk, chunkIndex, totalChunks, id, isLastChunk, action = "SaveXspreadSheet") {
   // 包装数据为对象格式
   const payload = {
     data: chunk,
@@ -28,29 +28,15 @@ async function uploadChunk(chunk, chunkIndex, totalChunks, id, pure) {
       "&totalChunks=" +
       totalChunks +
       "&pure=" +
-      pure,
+      isLastChunk +
+      "&do=" +
+      action,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify(payload), // 发送包装后的数据
-    }
-  );
-  return await response.json();
-}
-
-// 合并分片
-async function mergeChunks(id, totalChunks, pure) {
-  const response = await fetch(
-    "http://119.91.209.28:3000/api/merge-chunks?id=" +
-      id +
-      "&totalChunks=" +
-      totalChunks +
-      "&pure=" +
-      pure,
-    {
-      method: "POST",
     }
   );
   return await response.json();
@@ -68,15 +54,10 @@ progressDiv.style.color = "white";
 progressDiv.style.borderRadius = "5px";
 
 // 保存数据到服务器
-async function saveToServer(data, pure) {
+async function saveToServer(data) {
   try {
-    const tim = (await getUrlParam("id")) || 0;
-    let chunkSize;
-    if (pure) {
-      chunkSize = 128 * 128;
-    } else {
-      chunkSize = 256 * 256; // 256KB
-    }
+    const id = (await getUrlParam("id")) || 0;
+    let chunkSize = 256 * 256;
     const jsonData = JSON.stringify(data);
     const totalChunks = Math.ceil(jsonData.length / chunkSize);
     // 显示进度提示
@@ -85,21 +66,58 @@ async function saveToServer(data, pure) {
     for (let i = 0; i < totalChunks; i++) {
       const chunk = jsonData.slice(i * chunkSize, (i + 1) * chunkSize);
       progressDiv.textContent = "正在上传 " + (i + 1) + " / " + totalChunks;
-      const result = await uploadChunk(chunk, i, totalChunks, tim, pure);
+      // 判断是否是最后一个分片
+      const isLastChunk = i === totalChunks - 1;
+      const result = await uploadChunk(chunk, i, totalChunks, id, isLastChunk, "SaveXspreadSheet");
       if (!result.success) {
         progressDiv.textContent = "分片上传失败";
       }
-    }
-    // 请求合并分片
-    progressDiv.textContent = "正在合并文件...";
-    const result = await mergeChunks(tim, totalChunks, pure);
-    if (result.success) {
-      progressDiv.textContent = "保存成功";
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      document.body.removeChild(progressDiv);
+      // 如果是最后一个分片且合并成功
+      if (isLastChunk && result.merged) {
+        progressDiv.textContent = "保存成功";
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        document.body.removeChild(progressDiv);
+      }
     }
   } catch (error) {
     console.error("保存失败:", error);
+    progressDiv.textContent = "保存失败: " + error.message;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    document.body.removeChild(progressDiv);
+  }
+}
+
+// 保存纯数据到服务器
+async function savePureDataToServer(data) {
+  try {
+    const id = (await getUrlParam("id")) || 0;
+    const chunkSize = 256 * 256;
+    const jsonData = JSON.stringify(data);
+    const totalChunks = Math.ceil(jsonData.length / chunkSize);
+    // 显示进度提示
+    document.body.appendChild(progressDiv);
+    // 上传所有分片
+    for (let i = 0; i < totalChunks; i++) {
+      const chunk = jsonData.slice(i * chunkSize, (i + 1) * chunkSize);
+      progressDiv.textContent = "正在上传纯数据 " + (i + 1) + " / " + totalChunks;
+      // 判断是否是最后一个分片
+      const isLastChunk = i === totalChunks - 1;
+      const result = await uploadChunk(chunk, i, totalChunks, id, isLastChunk, "SavePureData");
+      if (!result.success) {
+        progressDiv.textContent = "分片上传失败";
+      }
+      // 如果是最后一个分片且合并成功
+      if (isLastChunk && result.merged) {
+        progressDiv.textContent = "纯数据保存成功";
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        document.body.removeChild(progressDiv);
+      }
+    }
+  } catch (error) {
+    console.error("纯数据保存失败:", error);
+    progressDiv.textContent = "纯数据保存失败: " + error.message;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    document.body.removeChild(progressDiv);
   }
 }
 
@@ -464,14 +482,14 @@ async function load() {
           tip: "保存",
           icon: saveIcon,
           onClick: async (_data, _sheet) => {
-            await saveToServer(optimizeSheetData(), false);
+            await saveToServer(optimizeSheetData());
           },
         },
         {
           tip: "保存纯数据",
           icon: pureSaveIcon,
           onClick: async (_data, _sheet) => {
-            await saveToServer(getPureData(), true);
+            await savePureDataToServer(getPureData());
           },
         },
         {
@@ -531,7 +549,7 @@ async function load() {
   document.addEventListener('keydown', async function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
-      await saveToServer(optimizeSheetData(), false);
+      await saveToServer(optimizeSheetData());
     }
   });
 }
