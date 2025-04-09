@@ -317,7 +317,7 @@ export default class ContextMenu {
 
   show(evt) {
     // 在预览模式下禁用右键菜单
-    if (this.sheet?.data?.settings?.mode === 'preview') {
+    if (this.sheet?.data?.settings?.mode === 'preview' || this.sheet?.data?.settings?.mode === 'enabled') {
       return;
     }
     

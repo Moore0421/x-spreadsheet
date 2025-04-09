@@ -27,17 +27,17 @@ class Spreadsheet {
         authorName: "User",
         enableTimeStamp: false,
       },
-      mode: mode === 'design' ? 'design' : (mode === 'preview' ? 'preview' : 'normal'),
+      mode: mode,
       ...options,
     };
     
     // 如果URL参数指定了mode，覆盖传入的options
-    if (mode === 'design' || mode === 'preview') {
+    if (mode === 'design' || mode === 'preview' || mode === 'enabled') {
       this.options.mode = mode;
     }
     
     // 预览模式下隐藏工具栏
-    if (this.options.mode === 'preview') {
+    if (this.options.mode === 'preview' || this.options.mode === 'enabled') {
       this.options.showToolbar = false;
     }
     
@@ -330,7 +330,7 @@ class Spreadsheet {
 
   // 添加模式切换方法
   switchMode(mode) {
-    if (mode !== 'design' && mode !== 'preview' && mode !== 'normal') {
+    if (mode !== 'design' && mode !== 'preview' && mode !== 'enabled' && mode !== 'normal') {
       return;
     }
     
@@ -338,7 +338,7 @@ class Spreadsheet {
     this.data.settings.mode = mode;
   
     // 处理工具栏显示/隐藏
-    if (mode === 'preview' && this.toolbar) {
+    if ((mode === 'preview' || mode === 'enabled') && this.toolbar) {
       this.toolbar.el.hide();
     } else if (this.toolbar) {
       this.toolbar.el.show();

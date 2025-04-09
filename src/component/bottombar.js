@@ -131,7 +131,7 @@ export default class Bottombar {
     // 获取模式
     const mode = options.mode || 'normal';
     // 根据模式决定菜单子项
-    const menuChildrens = allowMultipleSheets && mode !== 'preview'
+    const menuChildrens = allowMultipleSheets && mode !== 'preview' && mode !== 'enabled'
       ? [
           new Icon("add").on("click", () => {
             addFunc();
@@ -204,7 +204,7 @@ export default class Bottombar {
         this.clickSwap2(item);
       })
       .on("contextmenu", (evt) => {
-        if (options.mode === "read" || options.mode === "preview") return;
+        if (options.mode === "read" || options.mode === "preview" || options.mode === "enabled") return;
         const { offsetLeft, offsetHeight } = evt.target;
         this.contextMenu.setOffset({
           left: offsetLeft,
@@ -213,7 +213,7 @@ export default class Bottombar {
         this.deleteEl = item;
       })
       .on("dblclick", () => {
-        if (options.mode === "read" || options.mode === "preview") return;
+        if (options.mode === "read" || options.mode === "preview" || options.mode === "enabled") return;
         if (!this.isInput) {
           this.isInput = true;
           const oldValue = item.html();

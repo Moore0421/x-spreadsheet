@@ -328,7 +328,7 @@ function clearClipboard() {
 
 function copy(evt) {
   const { data, selector } = this;
-  if (data.settings.mode === "read" || data.settings.mode === "preview") return;
+  if (data.settings.mode === "read" || data.settings.mode === "preview" || data.settings.mode === "enabled") return;
   data.copy();
   data.copyToSystemClipboard(evt);
   selector.showClipboard();
@@ -336,7 +336,7 @@ function copy(evt) {
 
 function cut() {
   const { data, selector } = this;
-  if (data.settings.mode === "read" || data.settings.mode === "preview") return;
+  if (data.settings.mode === "read" || data.settings.mode === "preview" || data.settings.mode === "enabled") return;
   data.cut();
   selector.showClipboard();
 }
@@ -483,7 +483,7 @@ function editorSet() {
   
   // 在预览模式下检查单元格是否可编辑
   const cell = data.getSelectedCell();
-  if ((data.settings.mode === "preview" || data.settings.mode === "normal") && cell && cell.editable === false) {
+  if ((data.settings.mode === "preview" || data.settings.mode === "normal" || data.settings.mode === "enabled") && cell && cell.editable === false) {
     return;
   }
   
@@ -610,7 +610,7 @@ function dataSetCellText(text, state = "finished") {
 
 function insertDeleteRowColumn(type) {
   const { data } = this;
-  if (data.settings.mode === "read" || data.settings.mode === "preview") return;
+  if (data.settings.mode === "read" || data.settings.mode === "preview" || data.settings.mode === "enabled") return;
   
   if (type === "insert-row") {
     data.insert("row");
@@ -1038,7 +1038,7 @@ function sheetInitEvents() {
         const { data } = this;
         const cell = data.getSelectedCell();
         const mode = data.settings?.mode;
-        if ((mode === "preview" || mode === "normal" || mode === "read") && cell && cell.editable === false) {
+        if ((mode === "preview" || mode === "normal" || mode === "read" || mode === "enabled") && cell && cell.editable === false) {
           return;
         }
         
@@ -1050,7 +1050,7 @@ function sheetInitEvents() {
         const { data } = this;
         const cell = data.getSelectedCell();
         const mode = data.settings?.mode;
-        if (mode === "preview" || mode === "normal" || mode === "read") {
+        if (mode === "preview" || mode === "normal" || mode === "read" || mode === "enabled") {
           if (cell && cell.editable === false) {
             return;
           }
@@ -1148,7 +1148,7 @@ export default class Sheet {
     if (this.options.mode === "read") this.selector.hide();
     
     // 在预览模式下隐藏工具栏
-    if (options.mode === 'preview' && this.toolbar) {
+    if ((options.mode === 'preview' || options.mode === 'enabled') && this.toolbar) {
       this.toolbar.el.hide();
     }
   }
@@ -1265,6 +1265,11 @@ export default class Sheet {
     
     const cell = this.data.getCell(ri, ci);
     const mode = this.data.settings?.mode;
+
+    // 如果是启用模式则不允许全部单元格编辑
+    if (mode === 'enabled') {
+      return;
+    }
     
     // 如果是不可编辑单元格且不是设计模式，则阻止编辑
     if (cell && cell.editable === false && mode === 'preview') {
