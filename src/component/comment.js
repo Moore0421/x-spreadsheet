@@ -9,7 +9,7 @@ function insertComment() {
   const { selector } = data;
   const { ri, ci } = selector;
   const cell = data.rows.getCellOrNew(ri, ci);
-  const { onCommentAddClick, authorName } = config;
+  const { onCommentAddClick, authorName, userId } = config;
   const value = textEl.el.value;
   if (value) {
     if (onCommentAddClick) {
@@ -19,7 +19,9 @@ function insertComment() {
       const newObj = {
         a: authorName ?? "",
         t: value,
+        T: true,
         timestamp: new Date().toISOString(),
+        ...(userId && { userId }),
       };
       if (c) {
         c.push(newObj);
@@ -82,15 +84,23 @@ function buildUser() {
 }
 
 function buildCommentStack(comments) {
+  const {
+    config: { enableTimeStamp },
+  } = this;
   const ele = comments.map((cmt) => {
     const { a, t, timestamp } = cmt;
     const avatar = h("div", `${cssPrefix}-comment-avatar`).child(
       a ? a.toString()[0]?.toUpperCase() : ""
     );
     const name = h("div", `${cssPrefix}-comment-name`).child(a);
-    // const date = h("div", `${cssPrefix}-comment-data`).child(date ?? "");
     const box = h("div", `${cssPrefix}-title-box`).child(name);
-    // .child(date);
+    if (enableTimeStamp) {
+      const dateString = new Date(timestamp).toLocaleString();
+      const date = h("div", `${cssPrefix}-comment-data`).child(
+        dateString ?? ""
+      );
+      box.child(date);
+    }
     const header = h("div", `${cssPrefix}-comment-inner-box`)
       .child(avatar)
       .child(box);

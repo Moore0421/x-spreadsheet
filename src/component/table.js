@@ -5,7 +5,7 @@ import { formatm } from "../core/format";
 
 import { Draw, DrawBox, thinLineWidth, npx } from "../canvas/draw";
 import { REF_ERROR } from "../constants";
-// gobal var
+// Global variables
 const cellPaddingWidth = 5;
 const tableFixedHeaderCleanStyle = { fillStyle: "#f4f5f8" };
 const tableGridStyle = {
@@ -20,7 +20,7 @@ function tableFixedHeaderStyle() {
     font: `500 ${npx(12)}px Source Sans Pro`,
     fillStyle: "#585757",
     lineWidth: thinLineWidth(),
-    strokeStyle: "#e6e6e6"
+    strokeStyle: "#e6e6e6",
   };
 }
 
@@ -28,6 +28,7 @@ export function getDrawBox(data, rindex, cindex, yoffset = 0) {
   const { left, top, width, height } = data.cellRect(rindex, cindex);
   return new DrawBox(left, top + yoffset, width, height, cellPaddingWidth);
 }
+
 /*
 function renderCellBorders(bboxes, translateFunc) {
   const { draw } = this;
@@ -62,10 +63,9 @@ export function renderCell(draw, data, rindex, cindex, yoffset = 0) {
   const trigger = settings?.mentionProgress?.trigger;
   const style = data.getCellStyleOrDefault(nrindex, cindex);
   const cellMeta = data.getCellMetaOrDefault(nrindex, cindex);
-  const dbox = getDrawBox(data, rindex, cindex, yoffset);
+  const dbox = getDrawBox(data, nrindex, cindex, yoffset);
   dbox.bgcolor = style.bgcolor;
   draw.rect(dbox, () => {
-    // render text
     let cellText = "";
     if (!data.settings.evalPaused && cell.f) {
       cellText = _cell.render(
@@ -89,8 +89,32 @@ export function renderCell(draw, data, rindex, cindex, yoffset = 0) {
         },
         trigger,
         {},
-        data.name
+        data.name,
+        (y, x, sheetName = data.name) => {
+          if (!sheetName || sheetName.toLowerCase() === data.name.toLowerCase())
+            return data.getCellMetaOrDefault(x, y);
+          else {
+            const rootContext = data.getRootContext();
+            const sheets = rootContext.datas;
+            const selectedSheet = sheets?.find(
+              (sheet) => sheet.name.toLowerCase() === sheetName.toLowerCase()
+            );
+            return selectedSheet
+              ? selectedSheet.getCellMetaOrDefault(x, y)
+              : {};
+          }
+        }
       );
+      // check for flip sign meta
+      if (
+        cell.f &&
+        cellMeta?.flipSign &&
+        cellText.toString().length > 0 &&
+        !isNaN(Number(cellText))
+      ) {
+        cellText = Number(cellText) * -1;
+      }
+
       cell.text = cellText;
       //Below code is temporarily added will be removed once we completely remove froala
       if (cell.w) {
@@ -111,7 +135,9 @@ export function renderCell(draw, data, rindex, cindex, yoffset = 0) {
     }
 
     if (style.format) {
-      cellText = formatm[style.format].render(cellText);
+      cellText =
+        formatm[style.format]?.render(cellText) ??
+        formatm["general"]?.render(cellText);
     }
     const font = Object.assign({}, style.font);
     font.size = getFontSizePxByPt(font.size);
@@ -127,18 +153,21 @@ export function renderCell(draw, data, rindex, cindex, yoffset = 0) {
         underline: style.underline,
       },
       style.textwrap,
-      { ...(cell ?? {}), rindex, cindex }
+      { ...(cell ?? {}), rindex: nrindex, cindex }
     );
     // error
-    const error = data.validations.getError(rindex, cindex);
+    const error = data.validations.getError(nrindex, cindex);
     if (error) {
-      // console.log('error:', rindex, cindex, error);
       draw.error(dbox);
     }
     if (frozen) {
       draw.frozen(dbox);
     }
+    if (cellMeta?.flipSign) {
+      draw.flipSign(dbox);
+    }
   });
+
   draw.drawIcon(dbox, cellMeta);
   if (settings?.comment?.indicatorColor && cell?.c) {
     draw.comment(dbox, settings?.comment?.indicatorColor);
@@ -170,7 +199,6 @@ function renderContent(viewRange, fw, fh, tx, ty) {
   draw.translate(fw, fh).translate(tx, ty);
 
   const { exceptRowSet } = data;
-  // const exceptRows = Array.from(exceptRowSet);
   const filteredTranslateFunc = (ri) => {
     const ret = exceptRowSet.has(ri);
     if (ret) {

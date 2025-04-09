@@ -576,6 +576,7 @@ function dataSetCellText(text, state = "finished") {
   // const cell = data.getCell(ri, ci);
 
   const inputText = editor.inputText;
+  const trimmedText = text?.trim?.()
   if (editor.formulaCell && state === "finished") {
     const { ri, ci } = editor.formulaCell;
     // console.log('dataSetCellText 调用 data.setFormulaCellText (formulaCell):', 'text:', inputText, 'ri:', ri, 'ci:', ci, 'state:', state);
@@ -583,7 +584,12 @@ function dataSetCellText(text, state = "finished") {
     this.trigger("cell-edited", inputText, ri, ci);
     this.trigger("cell-edit-finished", text, ri, ci);
     editor.setFormulaCell(null);
-  } else if (state === "finished" && text?.trim?.().startsWith(trigger)) {
+    //The below condition is ro inject variable inside formula when there is only one formula and above case will handle for = sign, if there is more variable or ant this ese then it will go to text
+  } else if (
+    state === "finished" &&
+    trimmedText?.startsWith(trigger) &&
+    trimmedText?.split(' ').length === 1
+  ) {
     // console.log('dataSetCellText 调用 data.setFormulaCellText (trigger):', 'text:', inputText, 'ri:', data.selector.ri, 'ci:', data.selector.ci, 'state:', state);
     const { ri, ci } = data.selector;
     data.setFormulaCellText(inputText, ri, ci, state);

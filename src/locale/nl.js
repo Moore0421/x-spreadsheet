@@ -46,6 +46,7 @@ export default {
     time: "Tijdstip",
     datetime: "Datum tijd",
     duration: "Duratie",
+    general: "Algemeen",
   },
   formula: {
     sum: "Som",

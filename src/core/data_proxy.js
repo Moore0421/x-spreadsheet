@@ -126,7 +126,7 @@ const defaultSettings = {
       bold: false,
       italic: false,
     },
-    format: "normal",
+    format: "general",
   },
 };
 
@@ -384,6 +384,7 @@ export default class DataProxy {
     this.clipboard = new Clipboard();
     this.autoFilter = new AutoFilter();
     this.change = () => {};
+    this.includeRowSet = new Set();
     this.exceptRowSet = new Set();
     this.sortedRowMap = new Map();
     this.unsortedRowMap = new Map();
@@ -790,10 +791,11 @@ export default class DataProxy {
       } else if (
         cellConfig?.cellButtons?.find((button) => button?.tag === property)
       ) {
-        const { ri, ci } = selector;
-        const cell = rows.getCellOrNew(ri, ci);
-        cell.cellMeta = cell?.cellMeta ?? {};
-        cell.cellMeta[property] = value;
+        selector.range.each((ri, ci) => {
+          const cell = rows.getCellOrNew(ri, ci);
+          cell.cellMeta = cell.cellMeta ?? {};
+          cell.cellMeta[property] = value;
+        });
       } else {
         selector.range.each((ri, ci) => {
           const cell = rows.getCellOrNew(ri, ci);
@@ -878,7 +880,11 @@ export default class DataProxy {
     const cell = rows.getCellOrNew(ri, ci);
     cell.editable = editable;
   }
-
+  extractCellReferences(formula) {
+    const cellRefRegex = /([A-Z]+[1-9][0-9]*)/g; // Regular expression to match cell references (e.g., A1, B10)
+    const matches = formula.match(cellRefRegex) || [];
+    return matches;
+  }
   // state: input | finished
   setFormulaCellText(text, ri, ci, state = "input") {
     // console.log("setCellText:","text:",text,"ri:",ri,"ci:",ci,"state:",state);
@@ -988,7 +994,14 @@ export default class DataProxy {
             match.toUpperCase()
           ) ?? text;
         // console.log("updatedFormula:", updatedFormula);
-        rows.setCellProperty(ri, ci, "f", isFormula ? updatedFormula : text);
+        const { onFormulaCellFinalized } = this.settings;
+      if (onFormulaCellFinalized) {
+        const cell = rows.getCellOrNew(ri, ci);
+        const cellRefs = this.extractCellReferences(updatedFormula);
+        onFormulaCellFinalized({ ...this, updatedFormula, cell, cellRefs });
+      }
+
+      rows.setCellProperty(ri, ci, "f", isFormula ? updatedFormula : text);
       } else {
         // 普通文本处理逻辑 - 直接设置文本值
         rows.setCellText(ri, ci, text);
@@ -1023,6 +1036,20 @@ export default class DataProxy {
         }
       }
     }
+  }
+
+  // 获取单元格编辑文本，需要返回原始表达式
+  getCellEditText(ri, ci) {
+    const { rows } = this;
+    const cell = rows.getCell(ri, ci);
+
+    // 如果是动态表达式，返回原始$表达式
+    if (cell?.isDynamicExpression) {
+      return cell.formula;
+    }
+
+    // 现有逻辑
+    return cell?.text || "";
   }
 
   // 获取单元格编辑文本，需要返回原始表达式
@@ -1217,6 +1244,7 @@ export default class DataProxy {
     this.changeData(() => {
       if (autoFilter.active()) {
         autoFilter.clear();
+        this.includeRowSet = new Set();
         this.exceptRowSet = new Set();
         this.sortedRowMap = new Map();
         this.unsortedRowMap = new Map();
@@ -1249,6 +1277,7 @@ export default class DataProxy {
         return 0;
       });
     }
+    this.includeRowSet = fset;
     this.exceptRowSet = rset;
     this.sortedRowMap = new Map();
     this.unsortedRowMap = new Map();
@@ -1454,7 +1483,7 @@ export default class DataProxy {
     if (trigger && text?.includes?.(trigger)) {
       let regex = new RegExp(`\\${trigger}\\S*`, "g");
       const map = this?.variables?.map ?? {};
-      text = text.replace(regex, (match) => {
+      text = String(text ?? "").replace(regex, (match) => {
         const variableName = match?.replaceAll?.(" ", "_")?.toLowerCase?.();
         if (map.hasOwnProperty(match) || map.hasOwnProperty(variableName)) {
           const { value, resolved: isResolved } =
@@ -1491,7 +1520,21 @@ export default class DataProxy {
   getCellFormulaOrTextOrDefault(ri, ci) {
     const cell = this.getCell(ri, ci) ?? {};
     const text = cell && cell.f ? cell.f : cell.text ? cell.text : "";
-    return this.resolveDynamicVariable.call(this, text)?.text;
+    const { flipSign } = cell.cellMeta ?? {};
+    const resolvedValue = this.resolveDynamicVariable.call(this, text)?.text;
+    let finalValue = resolvedValue;
+    const trigger = this.settings?.mentionProgress?.trigger;
+    // Check if the the cell is DV cell
+    if (
+      flipSign &&
+      trigger &&
+      text?.startsWith?.(trigger) &&
+      !isNaN(Number(finalValue)) &&
+      resolvedValue !== ""
+    ) {
+      finalValue = (Number(finalValue) * -1).toString();
+    }
+    return finalValue;
   }
 
   getCellStyle(ri, ci) {
@@ -1550,7 +1593,7 @@ export default class DataProxy {
   }
 
   setCellProperty(ri, ci, key, value) {
-    this.rows(ri, ci, key, value);
+    this.rows.setCellProperty(ri, ci, key, value);
   }
 
   freezeIsActive() {
@@ -1656,8 +1699,15 @@ export default class DataProxy {
   }
 
   viewRange() {
-    const { scroll, rows, cols, freeze, exceptRowSet } = this;
-    // console.log('scroll:', scroll, ', freeze:', freeze)
+    const {
+      scroll,
+      rows,
+      cols,
+      freeze,
+      includeRowSet,
+      autoFilter,
+      exceptRowSet,
+    } = this;
     let { ri, ci } = scroll;
     if (ri <= 0) [ri] = freeze;
     if (ci <= 0) [, ci] = freeze;
@@ -1665,10 +1715,13 @@ export default class DataProxy {
     let [x, y] = [0, 0];
     let [eri, eci] = [rows.len, cols.len];
     for (let i = ri; i < rows.len; i += 1) {
-      if (!exceptRowSet.has(i)) {
+      if (autoFilter.active() && includeRowSet.size > 0) {
+        if (includeRowSet.has(i)) y += rows.getHeight(i);
+        else if (!exceptRowSet.has(i)) y += rows.getHeight(i);
+      } else {
         y += rows.getHeight(i);
-        eri = i;
       }
+      eri = i;
       if (y > this.viewHeight()) break;
     }
     for (let j = ci; j < cols.len; j += 1) {
@@ -1676,7 +1729,6 @@ export default class DataProxy {
       eci = j;
       if (x > this.viewWidth()) break;
     }
-    // console.log(ri, ci, eri, eci, x, y);
     return new CellRange(ri, ci, eri, eci, x, y);
   }
 
@@ -1802,7 +1854,7 @@ export default class DataProxy {
         const cells = rowData[rowIndex]?.cells;
         for (let cellIndex in cells) {
           const cell = cells[cellIndex];
-          const text = cell.f ?? cell.text;
+          const text = cell.f || cell.text;
           text?.replaceAll?.(regex, (match) => {
             if (
               trigger === "#" &&

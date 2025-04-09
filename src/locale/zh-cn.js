@@ -74,6 +74,7 @@ export default {
     time: "时间",
     datetime: "长日期",
     duration: "持续时间",
+    general: "常规",
   },
   formula: {
     sum: "求和",

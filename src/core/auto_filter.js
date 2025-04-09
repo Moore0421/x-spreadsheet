@@ -66,7 +66,7 @@ export default class AutoFilter {
     if (ref != null) {
       this.ref = ref;
       this.filters = filters.map(
-        (it) => new Filter(it.ci, it.operator, it.value),
+        (it) => new Filter(it.ci, it.operator, it.value)
       );
       if (sort) {
         this.sort = new Sort(sort.ci, sort.order);

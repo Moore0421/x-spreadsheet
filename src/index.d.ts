@@ -34,7 +34,7 @@ declare module "x-data-spreadsheet" {
     };
     style?: {
       bgcolor: string;
-      align: "left" | "center" | "right";
+      align: "left" | "center" | "justify" | "right";
       valign: "top" | "middle" | "bottom";
       textwrap: boolean;
       strike: boolean;
@@ -53,6 +53,7 @@ declare module "x-data-spreadsheet" {
     valueSetter?: (metaData: FormatterMeta) => string;
     editValueFormatter?: (metaData: FormatterMeta) => string;
     cellStyleProvider?: (attr: object, metaData: FormatterMeta) => object;
+    onFormulaCellFinalized?: (params: Record<string, any>) => void;
     extendedContextMenu?: ExtendedContextMenu[];
     mentionProgress?: {
       trigger: string;
@@ -63,8 +64,10 @@ declare module "x-data-spreadsheet" {
     disableFeatures?: string[];
     suppressMaximumSelection?: boolean;
     comment?: {
-      indicatorColor?: string;
+      userId?: string;
       authorName?: string;
+      indicatorColor?: string;
+      enableTimeStamp?: boolean;
       onCommentAddClick: (
         cell: any,
         ri: number,
@@ -222,7 +225,7 @@ declare module "x-data-spreadsheet" {
   }
 
   export interface CellStyle {
-    align?: "left" | "center" | "right";
+    align?: "left" | "center" | "justify" | "right";
     valign?: "top" | "middle" | "bottom";
     font?: {
       bold?: boolean;

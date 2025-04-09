@@ -1,5 +1,6 @@
 import DropdownItem from "./dropdown_item";
 import DropdownAlign from "../dropdown_align";
+import { ALIGN_ITEMS } from "../../constants";
 
 export default class Align extends DropdownItem {
   constructor(value) {
@@ -8,6 +9,6 @@ export default class Align extends DropdownItem {
 
   dropdown() {
     const { value } = this;
-    return new DropdownAlign(["left", "center", "right"], value);
+    return new DropdownAlign(ALIGN_ITEMS, value);
   }
 }

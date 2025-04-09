@@ -19,7 +19,12 @@ export function bindClickoutside(el, cb) {
   el.xclickoutside = (evt) => {
     // ignore double click
     // console.log('evt:', evt);
-    if (evt.detail === 2 || el.contains(evt.target)) return;
+    if (
+      evt.detail === 2 ||
+      el.contains(evt.target) ||
+      evt?.view?.isCustomThumbDrag
+    )
+      return;
     if (cb) cb(el);
     else {
       el.hide();

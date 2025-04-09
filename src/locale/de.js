@@ -46,6 +46,7 @@ export default {
     time: "Termin",
     datetime: "Datum Termin",
     duration: "Dauer",
+    general: "Allgemein",
   },
   formula: {
     sum: "Summe",

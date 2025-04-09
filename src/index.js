@@ -7,7 +7,7 @@ import { cssPrefix } from "./config";
 import { locale } from "./locale/locale";
 import "./index.less";
 import { AVAILABLE_FEATURES, SHEET_TO_CELL_REF_REGEX } from "./constants";
-import { deepClone, getNewSheetName, stox } from "./utils";
+import { getNewSheetName, stox } from "./utils";
 import ExcelExport from "./component/excel-export";
 import { getPeople, getProducts } from "./functions/custom_functions";
 
@@ -25,6 +25,7 @@ class Spreadsheet {
       comment: {
         indicatorColor: "purple",
         authorName: "User",
+        enableTimeStamp: false,
       },
       mode: mode === 'design' ? 'design' : (mode === 'preview' ? 'preview' : 'normal'),
       ...options,
@@ -44,6 +45,8 @@ class Spreadsheet {
       this.options.comment.indicatorColor =
         options.comment.indicatorColor ?? "purple";
       this.options.comment.authorName = options.comment.authorName ?? "User";
+      this.options.comment.userId = options.comment.userId;
+      this.options.comment.enableTimeStamp = options.comment.enableTimeStamp;
     }
     if (this.options?.mode === "read") {
       this.options.showToolbar = false;
@@ -168,13 +171,16 @@ class Spreadsheet {
       d.rows.each((ri, row) => {
         Object.entries(row.cells).forEach(([ci, cell]) => {
           const text = cell?.text ?? "";
-          const updatedText = text.replace(SHEET_TO_CELL_REF_REGEX, (match) => {
-            const [sheetName] = match.replaceAll("'", "").split("!");
-            if (sheetName === oldSheetName) {
-              return match.replace(oldSheetName, newSheetName);
+          const updatedText = String(text ?? "").replace(
+            SHEET_TO_CELL_REF_REGEX,
+            (match) => {
+              const [sheetName] = match.replaceAll("'", "").split("!");
+              if (sheetName === oldSheetName) {
+                return match.replace(oldSheetName, newSheetName);
+              }
+              return match;
             }
-            return match;
-          });
+          );
           if (updatedText !== text) d.rows.setCellText(ri, ci, updatedText);
         });
       });
@@ -222,8 +228,9 @@ class Spreadsheet {
     return this;
   }
 
-  setCellProperty(ri, ci, key, value) {
-    this.datas[sheetIndex].setCellProperty(ri, ci, key, value);
+  setCellProperty(ri, ci, key, value, sheetIndex) {
+    const _sheetIndex = sheetIndex ?? this.getSheetIndex();
+    this.datas[_sheetIndex].setCellProperty(ri, ci, key, value);
     return this;
   }
 
@@ -338,6 +345,13 @@ class Spreadsheet {
   
     // 重新渲染表格
     this.sheet.table.render();
+  }
+
+  getSheetIndex() {
+    const sheets = this.bottombar.dataNames;
+    const activeSheet = this.sheet.data.name;
+    const sheetIndex = sheets.indexOf(activeSheet);
+    return sheetIndex === -1 ? 0 : sheetIndex;
   }
 }
 

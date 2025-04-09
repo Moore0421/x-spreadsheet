@@ -4,15 +4,18 @@ import {
   CIRCULAR_DEPENDENCY_ERROR,
   DYNAMIC_VARIABLE_ERROR,
   DYNAMIC_VARIABLE_RESOLVING,
+  GENERAL_CELL_OBJECT,
   GENERAL_ERROR,
   REF_ERROR,
   SHEET_TO_CELL_REF_REGEX,
   SPACE_REMOVAL_REGEX,
 } from "../constants";
+import { deepClone } from "../utils";
 import { expr2xy, xy2expr } from "./alphabet";
 import { numberCalc } from "./helper";
 import { Parser } from "hot-formula-parser";
 import dynamicFunctions from './dynamic_functions';
+import * as XLSX from "xlsx";
 
 // Converting infix expression to a suffix expression
 // src: AVERAGE(SUM(A1,A2), B1) + 50 + B20
@@ -274,7 +277,8 @@ const parserFormulaString = (
   getDynamicVariable,
   trigger,
   formulaCallStack,
-  sheetName
+  sheetName,
+  getCellMetaOrDefault
 ) => {
   if (string?.length) {
     try {
@@ -305,6 +309,7 @@ const parserFormulaString = (
           const [linkSheetName, cellRef] = match.replaceAll("'", "").split("!");
           const [x, y] = expr2xy(cellRef);
           const text = getCellText(x, y, linkSheetName);
+          const cellMeta = getCellMetaOrDefault(x, y, linkSheetName);
           if (text?.startsWith?.("=")) {
             if (formulaCallStack?.[linkSheetName]?.includes(cellRef))
               isCircularDependency = true;
@@ -313,16 +318,21 @@ const parserFormulaString = (
                 formulaCallStack[linkSheetName] || [];
               formulaCallStack[linkSheetName].push(cellRef);
             }
-            return isCircularDependency
-              ? 0
-              : cellRender(
-                  text,
-                  getCellText,
-                  getDynamicVariable,
-                  trigger,
-                  formulaCallStack,
-                  linkSheetName
-                );
+            if (isCircularDependency) return 0;
+            else {
+              const { flipSign } = cellMeta ?? {};
+
+              const referenceResult = cellRender(
+                text,
+                getCellText,
+                getDynamicVariable,
+                trigger,
+                formulaCallStack,
+                sheetName,
+                getCellMetaOrDefault
+              );
+              return flipSign ? referenceResult * -1 : referenceResult;
+            }
           }
           if (text === REF_ERROR) isFormulaResolved = true;
           return isNaN(Number(text)) ? `"${text}"` : text;
@@ -339,6 +349,8 @@ const parserFormulaString = (
       newFormulaString = newFormulaString.replace(CELL_REF_REGEX, (cellRef) => {
         const [x, y] = expr2xy(cellRef);
         const text = getCellText(x, y);
+        const cellMeta = getCellMetaOrDefault(x, y);
+
         if (text) {
           if (text?.startsWith?.("=")) {
             if (formulaCallStack?.[sheetName]?.includes(cellRef))
@@ -347,16 +359,21 @@ const parserFormulaString = (
               formulaCallStack[sheetName] = formulaCallStack[sheetName] || [];
               formulaCallStack[sheetName].push(cellRef);
             }
-            return isCircularDependency
-              ? 0
-              : cellRender(
-                  text,
-                  getCellText,
-                  getDynamicVariable,
-                  trigger,
-                  formulaCallStack,
-                  sheetName
-                );
+            if (isCircularDependency) return 0;
+            else {
+              const { flipSign } = cellMeta ?? {};
+
+              const referenceResult = cellRender(
+                text,
+                getCellText,
+                getDynamicVariable,
+                trigger,
+                formulaCallStack,
+                sheetName,
+                getCellMetaOrDefault
+              );
+              return flipSign ? referenceResult * -1 : referenceResult;
+            }
           } else {
             return isNaN(Number(text)) ? `"${text}"` : text;
           }
@@ -380,10 +397,12 @@ const cellRender = (
   getDynamicVariable,
   trigger,
   formulaCallStack = {},
-  sheetName
+  sheetName,
+  getCellMetaOrDefault
 ) => {
   if (src[0] === "=") {
     const formula = src.substring(1);
+
     try {
       var parser = new Parser();
       const parsedFormula = parserFormulaString(
@@ -393,7 +412,8 @@ const cellRender = (
         getDynamicVariable,
         trigger,
         formulaCallStack,
-        sheetName
+        sheetName,
+        getCellMetaOrDefault
       );
 
       if (parsedFormula.includes(REF_ERROR)) return REF_ERROR;
@@ -404,7 +424,25 @@ const cellRender = (
       else if (parsedFormula.includes(DYNAMIC_VARIABLE_ERROR))
         return DYNAMIC_VARIABLE_ERROR;
       const data = parser.parse(parsedFormula);
-      return data?.error?.replace("#", "") ?? data?.result;
+      const { error, result } = data ?? {};
+      if (error) {
+        return error.replace("#", "");
+      } else if (
+        typeof result === "number" &&
+        result.toString().includes("e")
+      ) {
+        return result.toFixed(10);
+      } else if (isNaN(Number(result))) {
+        return result;
+      } else {
+        // Info : below function will be used to format the cell value upto 8 decimal places
+        const valueUpto8Decimals = XLSX.utils.format_cell(
+          deepClone(GENERAL_CELL_OBJECT),
+          result
+        );
+
+        return Number(valueUpto8Decimals);
+      }
     } catch (e) {
       return GENERAL_ERROR;
     }
@@ -452,7 +490,7 @@ const cellRender = (
     return resolving
       ? DYNAMIC_VARIABLE_RESOLVING
       : resolved
-        ? text ?? src
+        ? (text ?? src)
         : DYNAMIC_VARIABLE_ERROR;
   }
   

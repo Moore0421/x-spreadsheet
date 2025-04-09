@@ -16,6 +16,7 @@ function inputMovePrev(evt) {
 }
 
 function inputMoveNext(evt) {
+  evt.preventDefault();
   evt.stopPropagation();
   const { filterItems } = this;
   if (filterItems.length <= 0) return;
@@ -105,7 +106,7 @@ export default class MentionMenu {
     }
     try {
       let items = fetchCall
-        ? (await this.getItemCall?.(word)) ?? []
+        ? ((await this.getItemCall?.(word)) ?? [])
         : this.items;
       this.items = items;
       const wordSplit = word.split(".");

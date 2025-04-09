@@ -64,7 +64,7 @@ function buildMenuItem(item) {
       this.hide();
     })
     .children(
-      typeof item.title === "function" ? item.title() : item.title ?? "",
+      typeof item.title === "function" ? item.title() : (item.title ?? ""),
       h("div", "label").child(item.label || "")
     )
     .attr("data-key", item.key);
@@ -192,6 +192,91 @@ function buildMenu() {
   return [...(additionalMenus ?? []), ...buildInMenus];
 }
 
+function addCustomScrollbar(container) {
+  const scrollbarThumb = h("div", `${cssPrefix}-custom-scrollbar-thumb`);
+  const scrollbarTrack = h("div", `${cssPrefix}-custom-scrollbar-track`).child(
+    scrollbarThumb
+  );
+  container.appendChild(scrollbarTrack.el);
+
+  const updateScrollbar = () => {
+    const viewableRatio = container.clientHeight / container.scrollHeight;
+    const thumbHeight = Math.max(viewableRatio * container.clientHeight, 30);
+    scrollbarThumb.css("height", `${thumbHeight}px`)
+    scrollbarTrack.css(
+      "display",
+      container.scrollHeight <= container.clientHeight ? "none" : "block"
+    );
+  };
+
+  let isDragging = false;
+  let startY, startScrollTop;
+
+  const syncThumbPosition = () => {
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    const maxThumbTravel = container.clientHeight - scrollbarThumb.el.offsetHeight;
+    const scrollRatio = container.scrollTop / maxScroll;
+    const thumbOffset = scrollRatio * maxThumbTravel;
+    scrollbarThumb.css('transform', `translateY(${thumbOffset}px)`)
+    scrollbarTrack.css('transform', `translateY(${container.scrollTop}px)`)
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging) return;
+    const deltaY = e.clientY - startY;
+    const maxScroll = container.scrollHeight - container.clientHeight;
+    const maxThumbTravel = container.clientHeight - scrollbarThumb.el.offsetHeight;
+    const newThumbPos = Math.max(
+      0,
+      Math.min(startScrollTop + deltaY, maxThumbTravel)
+    );
+    const scrollRatio = newThumbPos / maxThumbTravel;
+    container.scrollTop = scrollRatio * maxScroll;
+  };
+
+  const handleMouseUp = () => {
+    isDragging = false;
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+    setTimeout(() => {
+      window.isCustomThumbDrag = null;
+    });
+  };
+
+  scrollbarThumb.on("mousedown", (e) => {
+    isDragging = true;
+    window.isCustomThumbDrag = true;
+    startY = e.clientY;
+    startScrollTop =
+      parseFloat(
+        scrollbarThumb.el.style.transform
+          .replace("translateY(", "")
+          .replace("px)", "")
+      ) || 0;
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    e.preventDefault();
+  });
+
+  container.addEventListener(
+    "wheel",
+    (e) => {
+      e.preventDefault();
+      container.scrollTop += e.deltaY * 0.5;
+    },
+    { passive: false }
+  );
+
+  container.addEventListener("scroll", syncThumbPosition);
+  const resizeObserver = new ResizeObserver(() => {
+    updateScrollbar();
+    syncThumbPosition();
+  });
+  resizeObserver.observe(container);
+  updateScrollbar();
+}
+
 export default class ContextMenu {
   constructor(sheetContext, viewFn, isHide = false, extendedContextMenu = []) {
     this.extendedContextMenu = extendedContextMenu;
@@ -205,6 +290,7 @@ export default class ContextMenu {
     this.isHide = isHide;
     this.setMode("range");
     this.lastCoordinate = { x: 0, y: 0 };
+    addCustomScrollbar(this.el.el);
   }
 
   // row-col: the whole rows or the whole cols

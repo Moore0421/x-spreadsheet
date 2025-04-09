@@ -90,10 +90,12 @@ const parseCssToXDataStyles = (styleString, cellType) => {
           else if (value === "line-through") parsedStyles["strike"] = true;
           break;
         case "text-align":
-          parsedStyles["align"] = value === "justify" ? "center" : value;
+          parsedStyles["align"] = value;
           break;
         case "vertical-align":
-          parsedStyles["valign"] = value;
+          parsedStyles["valign"] = ["justify", "center"].includes(value)
+            ? "middle"
+            : value;
           break;
         case "font-weight":
           const parsedIntValue = parseInt(value);
@@ -772,6 +774,139 @@ const getNumberFormatFromStyles = (styleTag) => {
   return results;
 };
 
+function generateSSFFormat(
+  groupingSymbol = ",",
+  digitGrouping = "",
+  decimalUpto = 2,
+  customFormat = "general"
+) {
+  let formatString = "";
+
+  switch (customFormat.toLowerCase()) {
+    case "text":
+      formatString = "@"; // Text format
+      break;
+    case "number":
+      formatString = generateNumberFormat(
+        groupingSymbol,
+        digitGrouping,
+        decimalUpto
+      );
+      break;
+    case "percent":
+      formatString = generateNumberFormat(
+        groupingSymbol,
+        digitGrouping,
+        decimalUpto
+      );
+      formatString = formatString.replace(/0(?=[);])/g, "0%"); // Ensures proper percentage formatting
+
+      break;
+    case "rmb":
+      formatString =
+        '"¥"' +
+        generateNumberFormat(groupingSymbol, digitGrouping, decimalUpto);
+      break;
+    case "usd":
+      formatString =
+        '"$"' +
+        generateNumberFormat(groupingSymbol, digitGrouping, decimalUpto);
+      break;
+    case "eur":
+      formatString =
+        '"€"' +
+        generateNumberFormat(groupingSymbol, digitGrouping, decimalUpto);
+      break;
+    case "date":
+      formatString = "yyyy-mm-dd";
+      break;
+    case "time":
+      formatString = "hh:mm:ss";
+      break;
+    case "datetime":
+      formatString = "yyyy-mm-dd hh:mm:ss";
+      break;
+    case "duration":
+      formatString = "[hh]:mm:ss";
+      break;
+    default:
+      formatString = generateNumberFormat(
+        groupingSymbol,
+        digitGrouping,
+        decimalUpto
+      );
+      break;
+  }
+
+  return formatString;
+}
+
+function generateNumberFormat(groupingSymbol, digitGrouping, decimalUpto) {
+  const integerPart = digitGrouping?.split(".")[0] ?? "";
+  const groupingPositions = integerPart.split(groupingSymbol);
+  const primaryGroupingSize =
+    groupingPositions?.length > 1 ? groupingPositions[1].length : 3;
+
+  let groupingPart = "#";
+  if (primaryGroupingSize === 3) {
+    groupingPart = "#,##0";
+  } else {
+    groupingPart = "#".repeat(primaryGroupingSize - 1) + "##0";
+  }
+
+  if (groupingSymbol !== ",") {
+    groupingPart = groupingPart.replace(/,/g, groupingSymbol);
+  }
+
+  let decimalPart = "";
+  if (decimalUpto > 0) {
+    decimalPart = "." + "0".repeat(decimalUpto);
+  }
+
+  const formatString = groupingPart + decimalPart;
+
+  // Add handling for negative values and zero
+  const negativePart = `(${groupingPart + decimalPart})`; // Enclose negative numbers in parentheses
+  const zeroPart = "-"; // Show zero as a dash
+  // Return the final format string, including positive, negative, and zero formats
+  return `${formatString};${negativePart};${zeroPart}`;
+}
+
+const countDecimals = (num) => {
+  if (num.includes(".")) {
+    return num.split(".")[1].length; // Count digits after decimal
+  }
+  return 0; // No decimal places
+};
+
+const getMultiplierPenalty = (numString) => {
+  let num = Number(numString);
+  if (num === 0) return 0; // Edge case for zero
+
+  let count = 0;
+  while (num % 10 === 0) {
+    count++;
+    num /= 10;
+  }
+  return count;
+};
+
+const getDecimalPlaces = (expression) => {
+  let numbers = expression.match(/[\d.]+/g); // Extract numbers
+  if (!numbers) return "Invalid Input";
+
+  let totalDecimalPlaces = numbers.reduce(
+    (sum, num) => sum + countDecimals(num),
+    0
+  );
+  let totalPenalty = numbers.reduce(
+    (sum, num) => sum + getMultiplierPenalty(num),
+    0
+  );
+
+  return Math.max(totalDecimalPlaces - totalPenalty, 0);
+};
+
 export {
   getStylingForClass,
   parseCssToXDataStyles,
@@ -785,4 +920,6 @@ export {
   getRowHeightForTextWrap,
   deepClone,
   getNumberFormatFromStyles,
+  generateSSFFormat,
+  getDecimalPlaces,
 };

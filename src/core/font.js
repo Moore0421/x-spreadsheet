@@ -21,9 +21,22 @@ const baseFonts = [
   { key: "Courier New", title: "Courier New" },
   { key: "Verdana", title: "Verdana" },
   { key: "Calibri", title: "Calibri" },
-  { key: "Tahoma", title: "Tahoma" },
-  { key: "Garamond", title: "Garamond" },
-  { key: "Book Antiqua", title: "Book Antiqua" }
+  {
+    key: "Tahoma",
+    title: "Tahoma",
+  },
+  {
+    key: "Garamond",
+    title: "Garamond",
+  },
+  {
+    key: "Book Antiqua",
+    title: "Book Antiqua",
+  },
+  {
+    key: "Trebuchet MS",
+    title: "Trebuchet MS",
+  },
 ];
 
 /** default fontSize list

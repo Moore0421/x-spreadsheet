@@ -57,20 +57,8 @@ function keydownEventHandler(evt) {
 }
 
 function mentionMenuSearch(text) {
-  const { textEl, trigger, mention } = this;
-  const caretPos = textEl.el.selectionStart;
-  let start = caretPos - 1;
-  while (start >= 0 && /\S/.test(text[start])) {
-    start--;
-  }
-  start++;
-
-  let end = caretPos;
-  while (end < text.length && /\S/.test(text[end])) {
-    end++;
-  }
-
-  let currentWord = text.slice(start, end);
+  const { trigger, mention } = this;
+  let { currentWord } = getCurrentWord.call(this, text);
   if (currentWord?.startsWith(trigger)) {
     mention.search(currentWord);
   } else {
@@ -225,24 +213,25 @@ function dateFormat(d) {
   return `${d.getFullYear()}-${month}-${date}`;
 }
 
-function mentionInputHandler(item) {
-  const { value } = item;
-  const { textEl } = this;
+function getCurrentWord(text) {
+  const { textEl, trigger } = this;
   const caretPos = textEl.el.selectionStart;
-  const text = this.inputText;
   let start = caretPos - 1;
-  while (start >= 0 && /\S/.test(text[start])) {
+  while (start >= 0 && /\S/.test(text[start]) && text[start + 1] !== trigger) {
     start--;
   }
   start++;
-
   let end = caretPos;
   while (end < text.length && /\S/.test(text[end])) {
     end++;
   }
+  return { currentWord: text.slice(start, end), start, end };
+}
 
-  let currentWord = text.slice(start, end);
-
+function mentionInputHandler(item) {
+  const { value } = item;
+  let text = this.inputText;
+  let { currentWord, start, end } = getCurrentWord.call(this, text);
   let word = "";
   if (currentWord?.includes(this.trigger) && !currentWord?.includes(".")) {
     word = `#${value}`;

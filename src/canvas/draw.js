@@ -65,6 +65,8 @@ class DrawBox {
       x += padding;
     } else if (align === "center") {
       x += width / 2;
+    } else if (align === "justify") {
+      x += padding;
     } else if (align === "right" || align === "end") {
       x += width - padding;
     }
@@ -258,23 +260,6 @@ class Draw {
     return this;
   }
 
-  /*
-    txt: render text
-    box: DrawBox
-    attr: {
-      align: left | center | right
-      valign: top | middle | bottom
-      color: '#333333',
-      strike: false,
-      font: {
-        name: 'Arial',
-        size: 14,
-        bold: false,
-        italic: false,
-      }
-    }
-    textWrap: text wrapping
-  */
   textConfigOperation(text, cellMeta) {
     if (text === 0 || text) {
       const valueFormatter = this.options.valueFormatter;
@@ -296,8 +281,27 @@ class Draw {
     return text;
   }
 
+  /*
+    txt: render text
+    box: DrawBox
+    attr: {
+      align: left | center | justify | right
+      valign: top | middle | bottom
+      color: '#333333',
+      strike: false,
+      font: {
+        name: 'Arial',
+        size: 14,
+        bold: false,
+        italic: false,
+      }
+    }
+    textWrap: text wrapping
+  */
+
   text(mtxt, box, attr = {}, textWrap = true, cellMeta = {}) {
-    mtxt = this.data.resolveDynamicVariable.call(this.data, mtxt)?.text ?? mtxt;
+    mtxt =
+      this.data.resolveDynamicVariable?.call(this.data, mtxt)?.text ?? mtxt;
     mtxt = this.textConfigOperation(mtxt, cellMeta);
     const { ctx } = this;
     attr = this.options.cellStyleProvider?.(attr, cellMeta) ?? attr;
@@ -315,23 +319,53 @@ class Draw {
     const txts = `${mtxt}`.split("\n");
     const biw = box.innerWidth();
     const ntxts = [];
-    txts.forEach((it) => {
-      const txtWidth = ctx.measureText(it).width;
-      if (textWrap && txtWidth > npx(biw)) {
-        let textLine = { w: 0, len: 0, start: 0 };
-        for (let i = 0; i < it.length; i += 1) {
-          if (textLine.w >= npx(biw)) {
-            ntxts.push(it.substr(textLine.start, textLine.len));
-            textLine = { w: 0, len: 0, start: i };
+    txts.forEach((line) => {
+      if (textWrap) {
+        const words = line.split(" ");
+        let currentLine = "";
+        let currentWidth = 0;
+
+        words.forEach((word, index) => {
+          const wordWidth = ctx.measureText(word).width;
+
+          if (currentWidth + wordWidth > npx(biw)) {
+            if (currentLine) {
+              ntxts.push(currentLine.trim());
+              currentLine = "";
+              currentWidth = 0;
+            }
+
+            if (wordWidth > npx(biw)) {
+              let splitWord = "";
+              for (let char of word) {
+                const charWidth = ctx.measureText(char).width;
+                if (currentWidth + charWidth > npx(biw)) {
+                  ntxts.push(splitWord);
+                  splitWord = "";
+                  currentWidth = 0;
+                }
+                splitWord += char;
+                currentWidth += charWidth;
+              }
+              if (splitWord) {
+                ntxts.push(splitWord);
+                currentWidth = 0;
+              }
+            } else {
+              currentLine += word + " ";
+              currentWidth += wordWidth + ctx.measureText(" ").width;
+            }
+          } else {
+            currentLine += word + (index < words.length - 1 ? " " : "");
+            currentWidth += wordWidth + ctx.measureText(" ").width;
           }
-          textLine.len += 1;
-          textLine.w += ctx.measureText(it[i]).width + 1;
-        }
-        if (textLine.len > 0) {
-          ntxts.push(it.substr(textLine.start, textLine.len));
+        });
+
+        if (currentLine) {
+          ntxts.push(currentLine.trim());
         }
       } else {
-        ntxts.push(it);
+        ntxts.push(line);
       }
     });
     const lineHeight = Number(font.size) + 2;
@@ -479,7 +513,7 @@ class Draw {
 
   dropdown(box) {
     const { ctx } = this;
-    const { x, y, width, height } = box;
+    const { x, y, width, height, color } = box;
     const sx = x + width - 15;
     const sy = y + height - 15;
     ctx.save();
@@ -488,7 +522,7 @@ class Draw {
     ctx.lineTo(npx(sx + 8), npx(sy));
     ctx.lineTo(npx(sx + 4), npx(sy + 6));
     ctx.closePath();
-    ctx.fillStyle = "rgba(0, 0, 0, .45)";
+    ctx.fillStyle = color || "rgba(0, 0, 0, .45)";
     ctx.fill();
     ctx.restore();
   }
@@ -532,11 +566,28 @@ class Draw {
     const { x, y } = box;
     ctx.save();
     ctx.beginPath();
-    ctx.moveTo(npx(x), npx(y - 1));        
-    ctx.lineTo(npx(x + 8), npx(y - 1));    
-    ctx.lineTo(npx(x), npx(y + 8));    
+    ctx.moveTo(npx(x), npx(y - 1));
+    ctx.lineTo(npx(x + 8), npx(y - 1));
+    ctx.lineTo(npx(x), npx(y + 8));
     ctx.closePath();
     ctx.fillStyle = "rgba(0, 255, 0, .85)";
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // FlipSign
+  flipSign(box) {
+    const { ctx } = this;
+    const { x, y, height } = box;
+    const sx = x;
+    const sy = y + height - 1;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(npx(sx), npx(sy));
+    ctx.lineTo(npx(sx + 8), npx(sy));
+    ctx.lineTo(npx(sx), npx(sy - 8));
+    ctx.closePath();
+    ctx.fillStyle = "rgba(0, 0, 255, .65)";
     ctx.fill();
     ctx.restore();
   }

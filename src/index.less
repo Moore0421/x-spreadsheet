@@ -589,11 +589,32 @@ body {
 }
 
 .@{css-prefix}-contextmenu {
-  overflow-x: hidden;
+  overflow: hidden;
+}
+
+.@{css-prefix}-custom-scrollbar-track {
+  position: absolute;
+  right: 2px;
+  top: 0;
+  width: 8px;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  z-index: 1000;
+}
+
+.@{css-prefix}-custom-scrollbar-thumb {
+  position: absolute;
+  width: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
 }
 
 .@{css-prefix}-context-sub-menu {
   position: fixed;
+  z-index: 1001;
 }
 
 .@{css-prefix}-suggest {
@@ -1201,6 +1222,10 @@ form fieldset {
     &.align-center {
       left: -13 * @icon-size;
       top: 0;
+    }
+    &.align-justify {
+      left: -7 * @icon-size;
+      top: -3 * @icon-size;
     }
     &.align-right {
       left: 0;
