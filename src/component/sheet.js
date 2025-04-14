@@ -634,6 +634,10 @@ function insertDeleteRowColumn(type) {
     data.setSelectedCellAttr("editable", true);
   } else if (type === "cell-non-editable") {
     data.setSelectedCellAttr("editable", false);
+  } else if (type === "set-data-cell") {
+    data.setSelectedCellAttr("isDataCell", true);
+  } else if (type === "cancel-data-cell") {
+    data.setSelectedCellAttr("isDataCell", false);
   }
   clearClipboard.call(this);
   sheetReset.call(this);

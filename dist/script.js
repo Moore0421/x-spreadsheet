@@ -15,7 +15,14 @@ async function getUrlParam(name) {
 }
 
 // 上传分片
-async function uploadChunk(chunk, chunkIndex, totalChunks, id, isLastChunk, action = "SaveXspreadSheet") {
+async function uploadChunk(
+  chunk,
+  chunkIndex,
+  totalChunks,
+  id,
+  isLastChunk,
+  action = "SaveXspreadSheet"
+) {
   // 包装数据为对象格式
   const payload = {
     data: chunk,
@@ -68,7 +75,14 @@ async function saveToServer(data) {
       progressDiv.textContent = "正在上传 " + (i + 1) + " / " + totalChunks;
       // 判断是否是最后一个分片
       const isLastChunk = i === totalChunks - 1;
-      const result = await uploadChunk(chunk, i, totalChunks, id, isLastChunk, "SaveXspreadSheet");
+      const result = await uploadChunk(
+        chunk,
+        i,
+        totalChunks,
+        id,
+        isLastChunk,
+        "SaveXspreadSheet"
+      );
       if (!result.success) {
         progressDiv.textContent = "分片上传失败";
       }
@@ -99,16 +113,24 @@ async function savePureDataToServer(data) {
     // 上传所有分片
     for (let i = 0; i < totalChunks; i++) {
       const chunk = jsonData.slice(i * chunkSize, (i + 1) * chunkSize);
-      progressDiv.textContent = "正在上传纯数据 " + (i + 1) + " / " + totalChunks;
+      progressDiv.textContent =
+        "正在上传纯数据 " + (i + 1) + " / " + totalChunks;
       // 判断是否是最后一个分片
       const isLastChunk = i === totalChunks - 1;
-      const result = await uploadChunk(chunk, i, totalChunks, id, isLastChunk, "SavePureData");
+      const result = await uploadChunk(
+        chunk,
+        i,
+        totalChunks,
+        id,
+        isLastChunk,
+        "SavePureData"
+      );
       if (!result.success) {
         progressDiv.textContent = "分片上传失败";
       }
       // 如果是最后一个分片且合并成功
       if (isLastChunk && result.merged) {
-        progressDiv.textContent = "纯数据保存成功";
+        progressDiv.textContent = "数据保存成功";
         await new Promise((resolve) => setTimeout(resolve, 2000));
         document.body.removeChild(progressDiv);
       }
@@ -175,12 +197,16 @@ function getPureData() {
     // 第一次遍历找出实际的最大行列数
     Object.entries(sheet.rows).forEach(([rowKey, row]) => {
       if (row && row.cells && Object.keys(row.cells).length > 0) {
-        hasData = true;
-        const rowIndex = parseInt(rowKey);
-        maxRow = Math.max(maxRow, rowIndex + 1);
         Object.keys(row.cells).forEach((colKey) => {
-          const colIndex = parseInt(colKey);
-          maxCol = Math.max(maxCol, colIndex + 1);
+          const cell = row.cells[colKey];
+          // 只处理标记为数据格的单元格
+          if (cell && cell.isDataCell === true) {
+            hasData = true;
+            const rowIndex = parseInt(rowKey);
+            const colIndex = parseInt(colKey);
+            maxRow = Math.max(maxRow, rowIndex + 1);
+            maxCol = Math.max(maxCol, colIndex + 1);
+          }
         });
       }
     });
@@ -193,24 +219,24 @@ function getPureData() {
       const row = sheet.rows[rowIndex];
       let rowHasData = false;
       const pureRow = { pxl: rowIndex + 1 }; // pxl从1开始
-      // 检查该行是否有数据
+      // 检查该行是否有数据格
       if (row && row.cells) {
-        Object.values(row.cells).forEach((cell) => {
-          if (cell && cell.text !== undefined && cell.text !== "") {
+        Object.entries(row.cells).forEach(([colKey, cell]) => {
+          if (
+            cell &&
+            cell.isDataCell === true &&
+            cell.text !== undefined &&
+            cell.text !== ""
+          ) {
             rowHasData = true;
+            const colIndex = parseInt(colKey);
+            pureRow[`F${colIndex + 1}`] = cell.text;
           }
         });
       }
-      // 如果行没有数据，跳过这一行
+      // 如果行没有数据格，跳过这一行
       if (!rowHasData) {
         continue;
-      }
-      // 遍历每一列
-      for (let colIndex = 0; colIndex < maxCol; colIndex++) {
-        const cell = row?.cells?.[colIndex];
-        if (cell && cell.text !== undefined && cell.text !== null) {
-          pureRow[`F${colIndex + 1}`] = cell.text;
-        }
       }
       pureSheet.rows.push(pureRow);
     }
@@ -232,46 +258,26 @@ function createFileInput() {
   return input;
 }
 
-// 纯数据合并函数（后端合并）
-async function serverSyncPureData(file) {
+// 纯数据合并函数（前端合并）
+async function XSSyncPureData(source) {
   document.body.appendChild(progressDiv);
-  progressDiv.textContent = "正在合并数据...";
-  const id = (await getUrlParam("id")) || 0;
+  progressDiv.textContent = "正在处理数据...";
   try {
-    const formData = new FormData();
-    formData.append("pureDataFile", file);
-    const response = await fetch(
-      `http://119.91.209.28:3000/api/sync-data?id=${id}`,
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-    const result = await response.json();
-    if (result.success) {
-      progressDiv.textContent = "合并成功，正在刷新页面...";
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      document.body.removeChild(progressDiv);
-      // 刷新页面以显示更新后的数据
-      location.reload();
+    // 处理输入可以是文件或直接的数据对象
+    let pureData;
+    if (source instanceof File) {
+      // 读取上传的JSON文件
+      progressDiv.textContent = "正在读取文件...";
+      const fileContent = await source.text();
+      pureData = JSON.parse(fileContent);
+    } else if (typeof source.text === "function") {
+      // 从API返回的数据
+      pureData = JSON.parse(source.text());
     } else {
-      progressDiv.textContent = "合并失败: " + result.message;
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      document.body.removeChild(progressDiv);
+      // 直接是数据对象
+      pureData = source;
     }
-  } catch (error) {
-    console.error("合并失败:", error);
-  }
-}
 
-/// 纯数据合并函数（前端合并）
-async function XSSyncPureData(file) {
-  document.body.appendChild(progressDiv);
-  progressDiv.textContent = "正在读取文件...";
-  try {
-    // 读取上传的JSON文件
-    const fileContent = await file.text();
-    const pureData = JSON.parse(fileContent);
     progressDiv.textContent = "正在更新数据...";
     let updatedCells = 0;
     let updatedSheets = 0;
@@ -455,6 +461,46 @@ function optimizeSheetData() {
   return allData;
 }
 
+// 在预览和启用模式下加载纯数据并合并
+async function loadAndMergePureData() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const mode = urlParams.get("mode");
+
+  // 只在预览和启用模式下执行
+  if (mode !== "preview" && mode !== "enabled") {
+    return;
+  }
+
+  try {
+    document.body.appendChild(progressDiv);
+    progressDiv.textContent = "正在加载数据...";
+
+    const id = (await getUrlParam("id")) || 0;
+    const response = await fetch(
+      "http://119.91.209.28:3000/api/getPureData?id=" + id
+    );
+    const result = await response.json();
+
+    if (result.success && result.data) {
+      // 使用前端合并方法将纯数据合并到表格
+      await XSSyncPureData({
+        text: function () {
+          return JSON.stringify(result.data);
+        },
+      });
+    }
+
+    progressDiv.textContent = "数据加载完成";
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    document.body.removeChild(progressDiv);
+  } catch (error) {
+    console.error("加载数据失败:", error);
+    progressDiv.textContent = "加载数据失败";
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    document.body.removeChild(progressDiv);
+  }
+}
+
 // 初始化表格
 async function load() {
   showLoading();
@@ -546,10 +592,26 @@ async function load() {
       console.log("grid-load", xs.sheet.data.getVariables());
     });
 
-  document.addEventListener('keydown', async function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+  // 获取当前模式
+  var urlParams = new URLSearchParams(window.location.search);
+  var mode = urlParams.get("mode");
+
+  document.addEventListener("keydown", async function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault();
-      await saveToServer(optimizeSheetData());
+
+      if (mode === "design") {
+        // 设计模式下保存整个表格
+        await saveToServer(optimizeSheetData());
+      } else {
+        // 预览模式和启用模式下只保存纯数据
+        await savePureDataToServer(getPureData());
+      }
     }
   });
+
+  if (mode === "preview" || mode === "enabled") {
+    // 完整表格加载完成后，加载纯数据并合并
+    await loadAndMergePureData();
+  }
 }

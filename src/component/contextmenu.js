@@ -38,6 +38,8 @@ const menuItems = [
   { key: "cell-non-editable", title: tf("contextmenu.cellnoneditable") },
   { key: "divider" },
   { key: "set-row-id", title: tf("contextmenu.setRowId") },
+  { key: "set-data-cell", title: tf("contextmenu.setDataCell") },
+  { key: "cancel-data-cell", title: tf("contextmenu.cancelDataCell") }
 ];
 
 function buildSubMenuItems(items) {

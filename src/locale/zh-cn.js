@@ -56,6 +56,8 @@ export default {
     navigate: "定位到该单元格",
     setRowId: '设置行ID',
     inputRowId: '请输入行ID',
+    setDataCell: '设置为数据格',
+    cancelDataCell: '取消数据格',
   },
   print: {
     size: "纸张大小",

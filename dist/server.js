@@ -286,6 +286,26 @@ app.post("/api/sync-data", upload.single("pureDataFile"), (req, res) => {
   }
 });
 
+// 获取纯数据
+app.get("/api/getPureData", (req, res) => {
+  const { id } = req.query;
+  const fileName = getFileName(id, true); // 使用纯数据文件名
+
+  try {
+    if (fs.existsSync(fileName)) {
+      const data = JSON.parse(fs.readFileSync(fileName, "utf8"));
+      res.json({
+        success: true,
+        data: data
+      });
+    } else {
+      res.json({ success: false, message: "纯数据文件不存在" });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 app.listen(3000, () => {
   console.log("Server running on port 3000");
 });

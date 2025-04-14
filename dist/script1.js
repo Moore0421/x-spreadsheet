@@ -15,7 +15,14 @@ async function getUrlParam(name) {
 }
 
 // 上传分片
-async function uploadChunk(chunk, chunkIndex, totalChunks, id, isLastChunk, action = "SaveXspreadSheet") {
+async function uploadChunk(
+  chunk,
+  chunkIndex,
+  totalChunks,
+  id,
+  isLastChunk,
+  action = "SaveXspreadSheet"
+) {
   // 包装数据为对象格式
   const payload = {
     data: chunk,
@@ -68,7 +75,14 @@ async function saveToServer(data) {
       progressDiv.textContent = "正在上传 " + (i + 1) + " / " + totalChunks;
       // 判断是否是最后一个分片
       const isLastChunk = i === totalChunks - 1;
-      const result = await uploadChunk(chunk, i, totalChunks, id, isLastChunk, "SaveXspreadSheet");
+      const result = await uploadChunk(
+        chunk,
+        i,
+        totalChunks,
+        id,
+        isLastChunk,
+        "SaveXspreadSheet"
+      );
       if (!result.success) {
         progressDiv.textContent = "分片上传失败";
       }
@@ -99,10 +113,18 @@ async function savePureDataToServer(data) {
     // 上传所有分片
     for (let i = 0; i < totalChunks; i++) {
       const chunk = jsonData.slice(i * chunkSize, (i + 1) * chunkSize);
-      progressDiv.textContent = "正在上传纯数据 " + (i + 1) + " / " + totalChunks;
+      progressDiv.textContent =
+        "正在上传纯数据 " + (i + 1) + " / " + totalChunks;
       // 判断是否是最后一个分片
       const isLastChunk = i === totalChunks - 1;
-      const result = await uploadChunk(chunk, i, totalChunks, id, isLastChunk, "SavePureData");
+      const result = await uploadChunk(
+        chunk,
+        i,
+        totalChunks,
+        id,
+        isLastChunk,
+        "SavePureData"
+      );
       if (!result.success) {
         progressDiv.textContent = "分片上传失败";
       }
@@ -127,7 +149,9 @@ async function getDataFromServer() {
   try {
     // 获取表格总数
     const countResponse = await fetch(
-      "/Jc_Interface/Result_DataApi.ashx?id=" + id + "&chunkIndex=0&do=GetXspreadSheet"
+      "/Jc_Interface/Result_DataApi.ashx?id=" +
+        id +
+        "&chunkIndex=0&do=GetXspreadSheet"
     );
     const { count, success } = await countResponse.json();
 
@@ -139,7 +163,11 @@ async function getDataFromServer() {
         document.getElementById("loading-num").textContent =
           "正在加载第" + i + "个表格";
         const response = await fetch(
-          "/Jc_Interface/Result_DataApi.ashx?id=" + id + "&chunkIndex=" + i + "&do=GetXspreadSheet"
+          "/Jc_Interface/Result_DataApi.ashx?id=" +
+            id +
+            "&chunkIndex=" +
+            i +
+            "&do=GetXspreadSheet"
         );
         const data = await response.json();
         if (data.success) {
@@ -176,12 +204,16 @@ function getPureData() {
     // 第一次遍历找出实际的最大行列数
     Object.entries(sheet.rows).forEach(([rowKey, row]) => {
       if (row && row.cells && Object.keys(row.cells).length > 0) {
-        hasData = true;
-        const rowIndex = parseInt(rowKey);
-        maxRow = Math.max(maxRow, rowIndex + 1);
         Object.keys(row.cells).forEach((colKey) => {
-          const colIndex = parseInt(colKey);
-          maxCol = Math.max(maxCol, colIndex + 1);
+          const cell = row.cells[colKey];
+          // 只处理标记为数据格的单元格
+          if (cell && cell.isDataCell === true) {
+            hasData = true;
+            const rowIndex = parseInt(rowKey);
+            const colIndex = parseInt(colKey);
+            maxRow = Math.max(maxRow, rowIndex + 1);
+            maxCol = Math.max(maxCol, colIndex + 1);
+          }
         });
       }
     });
@@ -194,24 +226,24 @@ function getPureData() {
       const row = sheet.rows[rowIndex];
       let rowHasData = false;
       const pureRow = { pxl: rowIndex + 1 }; // pxl从1开始
-      // 检查该行是否有数据
+      // 检查该行是否有数据格
       if (row && row.cells) {
-        Object.values(row.cells).forEach((cell) => {
-          if (cell && cell.text !== undefined && cell.text !== "") {
+        Object.entries(row.cells).forEach(([colKey, cell]) => {
+          if (
+            cell &&
+            cell.isDataCell === true &&
+            cell.text !== undefined &&
+            cell.text !== ""
+          ) {
             rowHasData = true;
+            const colIndex = parseInt(colKey);
+            pureRow[`F${colIndex + 1}`] = cell.text;
           }
         });
       }
-      // 如果行没有数据，跳过这一行
+      // 如果行没有数据格，跳过这一行
       if (!rowHasData) {
         continue;
-      }
-      // 遍历每一列
-      for (let colIndex = 0; colIndex < maxCol; colIndex++) {
-        const cell = row?.cells?.[colIndex];
-        if (cell && cell.text !== undefined && cell.text !== null) {
-          pureRow[`F${colIndex + 1}`] = cell.text;
-        }
       }
       pureSheet.rows.push(pureRow);
     }
@@ -233,17 +265,25 @@ function createFileInput() {
   return input;
 }
 
-/// 纯数据合并函数（前端合并）
-async function XSSyncPureData(file) {
+// 纯数据合并函数
+async function XSSyncPureData(source) {
   document.body.appendChild(progressDiv);
-  progressDiv.textContent = "正在读取文件...";
+  progressDiv.textContent = "正在处理数据...";
   try {
-    // 读取上传的JSON文件
-    const fileContent = await file.text();
-    const pureData = JSON.parse(fileContent);
-    progressDiv.textContent = "正在更新数据...";
-    let updatedCells = 0;
-    let updatedSheets = 0;
+    // 处理输入可以是文件或直接的数据对象
+    let pureData;
+    if (source instanceof File) {
+      // 读取上传的JSON文件
+      progressDiv.textContent = "正在读取文件...";
+      const fileContent = await source.text();
+      pureData = JSON.parse(fileContent);
+    } else if (typeof source.text === "function") {
+      // 从API返回的数据
+      pureData = JSON.parse(source.text());
+    } else {
+      // 直接是数据对象
+      pureData = source;
+    }
 
     // 获取当前所有数据
     const allData = xs.getData();
@@ -424,6 +464,38 @@ function optimizeSheetData() {
   return allData;
 }
 
+// 在预览和启用模式下加载纯数据并合并
+async function loadAndMergePureData() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const mode = urlParams.get("mode");
+
+  // 只在预览和启用模式下执行
+  if (mode !== "preview" && mode !== "enabled") {
+    return;
+  }
+
+  try {
+    document.body.appendChild(progressDiv);
+
+    const id = (await getUrlParam("id")) || 0;
+    const response = await fetch(
+      "/Jc_Interface/Result_DataApi.ashx?id=" + id + "&do=GetPureData"
+    );
+    const result = await response.json();
+
+    if (result.success && result.data) {
+      // 使用合并方法将纯数据合并到表格
+      await XSSyncPureData({
+        text: function () {
+          return JSON.stringify(result.data);
+        },
+      });
+    }
+  } catch (error) {
+    console.error("加载数据失败:", error);
+  }
+}
+
 // 初始化表格
 async function load() {
   showLoading();
@@ -515,10 +587,38 @@ async function load() {
       console.log("grid-load", xs.sheet.data.getVariables());
     });
 
-  document.addEventListener('keydown', async function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+  // 获取当前模式
+  var urlParams = new URLSearchParams(window.location.search);
+  var mode = urlParams.get("mode");
+
+  document.addEventListener("keydown", async function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
       e.preventDefault();
-      await saveToServer(optimizeSheetData());
+
+      if (mode === "design") {
+        // 设计模式下保存整个表格
+        await saveToServer(optimizeSheetData());
+      } else {
+        // 预览模式和启用模式下只保存纯数据
+        await savePureDataToServer(getPureData());
+      }
     }
   });
+
+  if (mode === "preview" || mode === "enabled") {
+    // 完整表格加载完成后，加载纯数据并合并
+    await loadAndMergePureData();
+  }
+}
+
+// 加载并合并纯数据
+async function loadAndMergePureData() {
+  try {
+    const pureData = await getPureDataFromServer();
+    if (pureData && Object.keys(pureData).length > 0) {
+      await XSSyncPureData(null, pureData);
+    }
+  } catch (error) {
+    console.error("加载纯数据失败", error);
+  }
 }
