@@ -130,7 +130,7 @@ async function savePureDataToServer(data) {
       }
       // 如果是最后一个分片且合并成功
       if (isLastChunk && result.merged) {
-        progressDiv.textContent = "纯数据保存成功";
+        progressDiv.textContent = "数据保存成功";
         await new Promise((resolve) => setTimeout(resolve, 2000));
         document.body.removeChild(progressDiv);
       }
@@ -154,7 +154,6 @@ async function getDataFromServer() {
         "&chunkIndex=0&do=GetXspreadSheet"
     );
     const { count, success } = await countResponse.json();
-
     if (!success) return {};
     // 循环获取表格
     let sheets = [];
@@ -284,6 +283,10 @@ async function XSSyncPureData(source) {
       // 直接是数据对象
       pureData = source;
     }
+
+    progressDiv.textContent = "正在更新数据...";
+    let updatedCells = 0;
+    let updatedSheets = 0;
 
     // 获取当前所有数据
     const allData = xs.getData();
@@ -475,11 +478,9 @@ async function loadAndMergePureData() {
   }
 
   try {
-    document.body.appendChild(progressDiv);
-
     const id = (await getUrlParam("id")) || 0;
     const response = await fetch(
-      "/Jc_Interface/Result_DataApi.ashx?id=" + id + "&do=GetPureData"
+      "/Jc_Interface/Result_DataApi.ashx?id=" + id + "&do=GetXspreadDataList"
     );
     const result = await response.json();
 
@@ -608,17 +609,5 @@ async function load() {
   if (mode === "preview" || mode === "enabled") {
     // 完整表格加载完成后，加载纯数据并合并
     await loadAndMergePureData();
-  }
-}
-
-// 加载并合并纯数据
-async function loadAndMergePureData() {
-  try {
-    const pureData = await getPureDataFromServer();
-    if (pureData && Object.keys(pureData).length > 0) {
-      await XSSyncPureData(null, pureData);
-    }
-  } catch (error) {
-    console.error("加载纯数据失败", error);
   }
 }
