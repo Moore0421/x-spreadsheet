@@ -331,6 +331,8 @@ function copy(evt) {
   if (data.settings.mode === "read" || data.settings.mode === "preview" || data.settings.mode === "enabled") return;
   data.copy();
   data.copyToSystemClipboard(evt);
+  const copiedCellRange = selector.range;
+  this.trigger("copied-clipboard", copiedCellRange);
   selector.showClipboard();
 }
 
@@ -338,6 +340,8 @@ function cut() {
   const { data, selector } = this;
   if (data.settings.mode === "read" || data.settings.mode === "preview" || data.settings.mode === "enabled") return;
   data.cut();
+  const cutCellRange = selector.range;
+  this.trigger("cut-clipboard", cutCellRange);
   selector.showClipboard();
 }
 
@@ -576,7 +580,7 @@ function dataSetCellText(text, state = "finished") {
   // const cell = data.getCell(ri, ci);
 
   const inputText = editor.inputText;
-  const trimmedText = text?.trim?.()
+  const trimmedText = text?.trim?.();
   if (editor.formulaCell && state === "finished") {
     const { ri, ci } = editor.formulaCell;
     // console.log('dataSetCellText 调用 data.setFormulaCellText (formulaCell):', 'text:', inputText, 'ri:', ri, 'ci:', ci, 'state:', state);
@@ -588,7 +592,7 @@ function dataSetCellText(text, state = "finished") {
   } else if (
     state === "finished" &&
     trimmedText?.startsWith(trigger) &&
-    trimmedText?.split(' ').length === 1
+    trimmedText?.split(" ").length === 1
   ) {
     // console.log('dataSetCellText 调用 data.setFormulaCellText (trigger):', 'text:', inputText, 'ri:', data.selector.ri, 'ci:', data.selector.ci, 'state:', state);
     const { ri, ci } = data.selector;

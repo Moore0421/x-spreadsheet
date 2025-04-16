@@ -85,6 +85,8 @@ declare module "x-data-spreadsheet" {
   export type CONTEXT_MENU_ACTION = "context-menu-action";
   export type SHEET_CHANGE = "sheet-change";
   export type PASTED_CLIPBOARD = "pasted-clipboard";
+  export type CUT_CLIPBOARD = " cut-clipboard";
+  export type COPIED_CLIPBOARD = "copied-clipboard";
   export type GRID_LOAD = "grid-load";
   export type CELL_EDIT_FINISHED = "cell-edit-finished";
   export type ROW_COLUMN_OPERATION = "row-column-operation";
@@ -153,6 +155,8 @@ declare module "x-data-spreadsheet" {
     ): void;
     (evnt: SHEET_CHANGE, callback: (data: SheetChangeType) => void): void;
     (evnt: PASTED_CLIPBOARD, callback: (data: any) => void): void;
+    (evnt: CUT_CLIPBOARD, callback: (data: any) => void): void;
+    (evnt: COPY_CLIPBOARD, callback: (data: any) => void): void;
     (evnt: GRID_LOAD, callback: (data: any) => void): void;
     (
       evnt: ROW_COLUMN_OPERATION,
