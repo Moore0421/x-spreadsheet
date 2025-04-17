@@ -38,6 +38,21 @@ function throttle(func, wait) {
   };
 }
 
+function debounce(func, wait, immediate = false) {
+  let timeout;
+  return function executedFunction(...args) {
+    const context = this;
+    const later = function() {
+      timeout = null;
+      if (!immediate) func.apply(context, args);
+    };
+    const callNow = immediate && !timeout;
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+    if (callNow) func.apply(context, args);
+  };
+}
+
 function scrollbarMove() {
   const { data, verticalScrollbar, horizontalScrollbar } = this;
   const { l, t, left, top, width, height } = data.getSelectedRect();
@@ -403,6 +418,234 @@ function overlayerMousedown(evt) {
   const cellRect = data.getCellRectByXY(offsetX, offsetY);
   const { left, top, width, height } = cellRect;
   let { ri, ci } = cellRect;
+  
+  // 行标题区域点击 (ri >= 0 && ci === -1)
+  if (ri >= 0 && ci === -1) {
+    // 直接设置选择范围为整行，跳过标准选择流程，避免合并单元格影响
+    const { cols } = data;
+    const lastColIndex = cols.len - 1;
+    
+    // 初始化选择范围
+    selector.range.sri = ri;
+    selector.range.eri = ri;
+    selector.range.sci = 0;
+    selector.range.eci = lastColIndex;
+    
+    // 更新选择器索引
+    selector.indexes = [ri, 0];
+    selector.moveIndexes = [ri, lastColIndex];
+    
+    // 强制渲染选择器
+    selector.resetAreaOffset();
+    table.render();
+    
+    this.trigger("cells-selected", null, selector.range);
+    
+    // 标记当前正在进行行选择模式
+    const initialRowIndex = ri;
+    
+    // 缓存上一次的选择范围，用于判断是否需要重新渲染
+    let lastSri = ri;
+    let lastEri = ri;
+    
+    // 使用节流函数限制更新频率
+    const updateSelection = throttle(function(targetRowIndex) {
+      // 只有当选择范围发生变化时才更新
+      let newSri, newEri;
+      
+      if (targetRowIndex >= initialRowIndex) {
+        // 向下拖动
+        newSri = initialRowIndex;
+        newEri = targetRowIndex;
+      } else {
+        // 向上拖动
+        newSri = targetRowIndex;
+        newEri = initialRowIndex;
+      }
+      
+      // 如果选择范围没有变化，则不更新
+      if (newSri === lastSri && newEri === lastEri) {
+        return;
+      }
+      
+      // 更新缓存的范围
+      lastSri = newSri;
+      lastEri = newEri;
+      
+      // 更新选择器范围
+      selector.range.sri = newSri;
+      selector.range.eri = newEri;
+      selector.range.sci = 0;
+      selector.range.eci = lastColIndex;
+      
+      // 更新选择器索引
+      selector.moveIndexes = [targetRowIndex, lastColIndex];
+      
+      // 强制渲染选择器
+      selector.resetAreaOffset();
+      table.render();
+    }, 30); // 30ms的节流间隔
+    
+    // 鼠标移动处理，支持多行选择
+    mouseMoveUp(
+      window,
+      (e) => {
+        // 获取当前鼠标位置下的单元格
+        const rect = data.getCellRectByXY(e.offsetX, e.offsetY);
+        let targetRowIndex = rect.ri;
+        
+        // 如果鼠标移出表格区域或在无效位置，尝试估算最近的行
+        if (targetRowIndex < 0) {
+          // 根据鼠标Y坐标估算行索引
+          if (e.offsetY <= data.rows.height) {
+            // 如果鼠标在表头上方，选择第一行
+            targetRowIndex = 0;
+          } else {
+            // 如果鼠标低于表头，选择最后一行
+            const lastVisibleRow = data.scroll.ri + data.scroll.rn;
+            targetRowIndex = Math.min(lastVisibleRow, data.rows.len - 1);
+          }
+        }
+        
+        // 使用节流函数更新选择范围
+        if (targetRowIndex >= 0) {
+          updateSelection(targetRowIndex);
+        }
+      },
+      () => {
+        // 选择完成后触发事件
+        this.trigger("cells-selected", null, selector.range);
+      }
+    );
+    return;
+  }
+  
+  // 列标题区域点击 (ri === -1 && ci >= 0)
+  if (ri === -1 && ci >= 0) {
+    // 直接设置选择范围为整列，跳过标准选择流程，避免合并单元格影响
+    const { rows } = data;
+    const lastRowIndex = rows.len - 1;
+    
+    // 初始化选择范围
+    selector.range.sri = 0;
+    selector.range.eri = lastRowIndex;
+    selector.range.sci = ci;
+    selector.range.eci = ci;
+    
+    // 更新选择器索引
+    selector.indexes = [0, ci];
+    selector.moveIndexes = [lastRowIndex, ci];
+    
+    // 强制渲染选择器
+    selector.resetAreaOffset();
+    table.render();
+    
+    this.trigger("cells-selected", null, selector.range);
+    
+    // 标记当前正在进行列选择模式
+    const initialColIndex = ci;
+    
+    // 缓存上一次的选择范围，用于判断是否需要重新渲染
+    let lastSci = ci;
+    let lastEci = ci;
+    
+    // 使用节流函数限制更新频率
+    const updateSelection = throttle(function(targetColIndex) {
+      // 只有当选择范围发生变化时才更新
+      let newSci, newEci;
+      
+      if (targetColIndex >= initialColIndex) {
+        // 向右拖动
+        newSci = initialColIndex;
+        newEci = targetColIndex;
+      } else {
+        // 向左拖动
+        newSci = targetColIndex;
+        newEci = initialColIndex;
+      }
+      
+      // 如果选择范围没有变化，则不更新
+      if (newSci === lastSci && newEci === lastEci) {
+        return;
+      }
+      
+      // 更新缓存的范围
+      lastSci = newSci;
+      lastEci = newEci;
+      
+      // 更新选择器范围
+      selector.range.sci = newSci;
+      selector.range.eci = newEci;
+      selector.range.sri = 0;
+      selector.range.eri = lastRowIndex;
+      
+      // 更新选择器索引
+      selector.moveIndexes = [lastRowIndex, targetColIndex];
+      
+      // 强制渲染选择器
+      selector.resetAreaOffset();
+      table.render();
+    }, 30); // 30ms的节流间隔
+    
+    // 鼠标移动处理，支持多列选择
+    mouseMoveUp(
+      window,
+      (e) => {
+        // 获取当前鼠标位置下的单元格
+        const rect = data.getCellRectByXY(e.offsetX, e.offsetY);
+        let targetColIndex = rect.ci;
+        
+        // 如果鼠标移出表格区域或在无效位置，尝试估算最近的列
+        if (targetColIndex < 0) {
+          // 根据鼠标X坐标估算列索引
+          if (e.offsetX <= data.cols.indexWidth) {
+            // 如果鼠标在行号左侧，选择第一列
+            targetColIndex = 0;
+          } else {
+            // 如果鼠标在行号右侧，选择最后一列
+            const lastVisibleCol = data.scroll.ci + data.scroll.cn;
+            targetColIndex = Math.min(lastVisibleCol, data.cols.len - 1);
+          }
+        }
+        
+        // 使用节流函数更新选择范围
+        if (targetColIndex >= 0) {
+          updateSelection(targetColIndex);
+        }
+      },
+      () => {
+        // 选择完成后触发事件
+        this.trigger("cells-selected", null, selector.range);
+      }
+    );
+    return;
+  }
+  
+  // 左上角点击 (ri === -1 && ci === -1)
+  if (ri === -1 && ci === -1) {
+    // 直接设置选择范围为整个表格，跳过标准选择流程，避免合并单元格影响
+    const { rows, cols } = data;
+    const lastRowIndex = rows.len - 1;
+    const lastColIndex = cols.len - 1;
+    
+    // 设置选择范围
+    selector.range.sri = 0;
+    selector.range.eri = lastRowIndex;
+    selector.range.sci = 0;
+    selector.range.eci = lastColIndex;
+    
+    // 更新选择器索引
+    selector.indexes = [0, 0];
+    selector.moveIndexes = [lastRowIndex, lastColIndex];
+    
+    // 强制渲染选择器
+    selector.resetAreaOffset();
+    table.render();
+    
+    this.trigger("cells-selected", null, selector.range);
+    return;
+  }
+  
   // sort or filter
   const { autoFilter } = data;
   if (autoFilter.includes(ri, ci)) {

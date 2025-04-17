@@ -8,6 +8,13 @@ function hideLoading() {
   document.getElementById("loadingOverlay").style.display = "none";
 }
 
+// 安全移除progressDiv
+function removeProgressDiv() {
+  if (progressDiv && progressDiv.parentNode === document.body) {
+    document.body.removeChild(progressDiv);
+  }
+}
+
 // 获取URL参数方法
 async function getUrlParam(name) {
   var urlParams = new URLSearchParams(window.location.search);
@@ -90,14 +97,14 @@ async function saveToServer(data) {
       if (isLastChunk && result.merged) {
         progressDiv.textContent = "保存成功";
         await new Promise((resolve) => setTimeout(resolve, 2000));
-        document.body.removeChild(progressDiv);
+        removeProgressDiv();
       }
     }
   } catch (error) {
     console.error("保存失败:", error);
     progressDiv.textContent = "保存失败: " + error.message;
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    document.body.removeChild(progressDiv);
+    removeProgressDiv();
   }
 }
 
@@ -132,14 +139,14 @@ async function savePureDataToServer(data) {
       if (isLastChunk && result.merged) {
         progressDiv.textContent = "数据保存成功";
         await new Promise((resolve) => setTimeout(resolve, 2000));
-        document.body.removeChild(progressDiv);
+        removeProgressDiv();
       }
     }
   } catch (error) {
     console.error("纯数据保存失败:", error);
     progressDiv.textContent = "纯数据保存失败: " + error.message;
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    document.body.removeChild(progressDiv);
+    removeProgressDiv();
   }
 }
 
@@ -266,61 +273,53 @@ function createFileInput() {
 
 // 纯数据合并函数
 async function XSSyncPureData(source) {
-  document.body.appendChild(progressDiv);
-  progressDiv.textContent = "正在处理数据...";
   try {
     // 处理输入可以是文件或直接的数据对象
     let pureData;
     if (source instanceof File) {
-      // 读取上传的JSON文件
-      progressDiv.textContent = "正在读取文件...";
       const fileContent = await source.text();
       pureData = JSON.parse(fileContent);
     } else if (typeof source.text === "function") {
-      // 从API返回的数据
       pureData = JSON.parse(source.text());
     } else {
-      // 直接是数据对象
       pureData = source;
     }
-
-    progressDiv.textContent = "正在更新数据...";
-    let updatedCells = 0;
-    let updatedSheets = 0;
 
     // 获取当前所有数据
     const allData = xs.getData();
 
-    // 遍历每个sheet
+    // 创建sheet名称到索引的映射，提高查找效率
+    const sheetIndexMap = new Map();
+    allData.forEach((sheet, index) => {
+      sheetIndexMap.set(sheet.name, index);
+    });
+
+    // 批量更新所有sheet
     for (const pureSheet of pureData) {
-      // 在当前数据中查找对应名称的sheet
-      const sheetIndex = allData.findIndex(
-        (sheet) => sheet.name === pureSheet.name
-      );
-      if (sheetIndex !== -1) {
-        updatedSheets++;
-        progressDiv.textContent = `正在更新表格 "${pureSheet.name}"...`;
+      const sheetIndex = sheetIndexMap.get(pureSheet.name);
+      if (sheetIndex === undefined) continue;
 
-        // 处理每个表格的行数据
-        if (pureSheet.rows && Array.isArray(pureSheet.rows)) {
-          updatedCells += await processBatch(pureSheet, sheetIndex);
+      if (pureSheet.rows && Array.isArray(pureSheet.rows)) {
+        // 批量更新单元格
+        for (const row of pureSheet.rows) {
+          const rowIndex = row.pxl - 1;
+          for (const [key, value] of Object.entries(row)) {
+            if (key.startsWith("F") && key !== "pxl") {
+              const colIndex = parseInt(key.slice(1)) - 1;
+              if (!isNaN(colIndex) && value !== undefined && value !== null) {
+                xs.cellText(rowIndex, colIndex, value.toString(), sheetIndex);
+              }
+            }
+          }
         }
-
-        // 每个表格更新完后重新渲染
-        xs.reRender();
-      } else {
-        console.warn(`未找到名为 "${pureSheet.name}" 的表格`);
       }
     }
 
-    progressDiv.textContent = `更新完成，共更新了 ${updatedSheets} 个表格，${updatedCells} 个单元格`;
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    document.body.removeChild(progressDiv);
+    // 最后统一渲染一次
+    xs.reRender();
   } catch (error) {
     console.error("合并失败:", error);
-    progressDiv.textContent = "合并失败: " + error.message;
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    document.body.removeChild(progressDiv);
+    throw error;
   }
 }
 
@@ -469,6 +468,7 @@ function optimizeSheetData() {
 
 // 在预览和启用模式下加载纯数据并合并
 async function loadAndMergePureData() {
+  document.getElementById("loading-num").textContent = "正在加载数据";
   const urlParams = new URLSearchParams(window.location.search);
   const mode = urlParams.get("mode");
 
@@ -492,6 +492,7 @@ async function loadAndMergePureData() {
         },
       });
     }
+    document.getElementById("loading-num").textContent = "数据加载完成";
   } catch (error) {
     console.error("加载数据失败:", error);
   }
@@ -610,4 +611,6 @@ async function load() {
     // 完整表格加载完成后，加载纯数据并合并
     await loadAndMergePureData();
   }
+
+  hideLoading();
 }
