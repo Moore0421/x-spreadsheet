@@ -142,7 +142,7 @@ export default class MentionMenu {
         this.hide();
       });
     } catch (error) {
-      console.log("catch", error);
+
       this.hideLoader();
       this.hide();
     }

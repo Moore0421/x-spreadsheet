@@ -50,7 +50,7 @@ const infixExprToSuffixExpr = (src) => {
       } else if (c === "-" && /[+\-*/,(]/.test(oldc)) {
         subStrs.push(c);
       } else {
-        // console.log('subStrs:', subStrs.join(''), stack);
+
         if (c !== "(" && subStrs.length > 0) {
           stack.push(subStrs.join(""));
         }
@@ -61,7 +61,7 @@ const infixExprToSuffixExpr = (src) => {
             try {
               const [ex, ey] = expr2xy(stack.pop());
               const [sx, sy] = expr2xy(stack.pop());
-              // console.log('::', sx, sy, ex, ey);
+
               let rangelen = 0;
               for (let x = sx; x <= ex; x += 1) {
                 for (let y = sy; y <= ey; y += 1) {
@@ -71,7 +71,7 @@ const infixExprToSuffixExpr = (src) => {
               }
               stack.push([c1, rangelen]);
             } catch (e) {
-              // console.log(e);
+
             }
           } else if (fnArgType === 1 || fnArgType === 3) {
             if (fnArgType === 3) stack.push(fnArgOperator);
@@ -79,7 +79,7 @@ const infixExprToSuffixExpr = (src) => {
             stack.push([c1, fnArgsLen]);
             fnArgsLen = 1;
           } else {
-            // console.log('c1:', c1, fnArgType, stack, operatorStack);
+
             while (c1 !== "(") {
               stack.push(c1);
               if (operatorStack.length <= 0) break;
@@ -108,7 +108,7 @@ const infixExprToSuffixExpr = (src) => {
           operatorStack.push(subStrs.join(""));
         } else {
           // priority: */ > +-
-          // console.log('xxxx:', operatorStack, c, stack);
+
           if (operatorStack.length > 0 && (c === "+" || c === "-")) {
             let top = operatorStack[operatorStack.length - 1];
             if (top !== "(") stack.push(operatorStack.pop());
@@ -164,9 +164,9 @@ const evalSubExpr = (subExpr, cellRender) => {
 // cellRender: (x, y) => {}
 const evalSuffixExpr = (srcStack, formulaMap, cellRender, cellList) => {
   const stack = [];
-  // console.log(':::::formulaMap:', formulaMap);
+
   for (let i = 0; i < srcStack.length; i += 1) {
-    // console.log(':::>>>', srcStack[i]);
+
     const expr = srcStack[i];
     const fc = expr[0];
     if (expr === "+") {
@@ -246,7 +246,7 @@ const evalSuffixExpr = (srcStack, formulaMap, cellRender, cellList) => {
       stack.push(evalSubExpr(expr, cellRender));
       cellList.pop();
     }
-    // console.log('stack:', stack);
+
   }
   return stack[0];
 };
@@ -453,7 +453,7 @@ const cellRender = (
     // 直接在cellRender中执行JavaScript代码并返回结果
     try {
       const jsCode = src.substring(2);
-      // console.log("cellRender执行JS代码:", jsCode);
+
       // 直接执行JavaScript代码并返回结果
       return executeJavaScriptInSandbox(jsCode);
     } catch (e) {
@@ -562,7 +562,7 @@ const evaluateDynamicExpression = (expression, dataProxy) => {
         const matchedFunction = allFunctions.find(f => f.toLowerCase() === functionNameLower);
         
         if (matchedFunction) {
-          // console.log(`找到不区分大小写的函数匹配: ${functionName} -> ${matchedFunction}`);
+
           result = dynamicFunctions.executeFunction(matchedFunction, args);
         } else {
           return `#UNDEFINED_FUNCTION!`;
@@ -681,7 +681,7 @@ const evaluateDynamicExpression = (expression, dataProxy) => {
 // 新增JavaScript表达式求值函数
 const evaluateJsExpression = (expression, dataProxy) => {
   try {
-    // console.log('计算JS表达式:', expression);
+
     
     // 1. 查找表达式中的所有动态函数引用
     const functionRefs = new Set();
@@ -727,8 +727,8 @@ const evaluateJsExpression = (expression, dataProxy) => {
       }
     });
     
-    // console.log('处理后的表达式:', processedExpr);
-    // console.log('临时变量:', tempVars);
+
+
     
     // 3. 构建上下文对象，包含动态函数和临时变量
     const context = {
@@ -740,7 +740,7 @@ const evaluateJsExpression = (expression, dataProxy) => {
       const func = dynamicFunctions.getFunction(funcName);
       if (func) {
         context[funcName] = (...args) => {
-          // console.log(`JS表达式中调用函数 ${funcName}:`, args);
+
           return dynamicFunctions.executeFunction(funcName, args);
         };
       }
@@ -750,7 +750,7 @@ const evaluateJsExpression = (expression, dataProxy) => {
     const argNames = Object.keys(context);
     const argValues = Object.values(context);
     
-    // console.log('表达式上下文变量:', argNames);
+
     
     // 创建并执行函数
     const calcFunc = new Function(...argNames, `
@@ -784,7 +784,7 @@ const evaluateJsExpression = (expression, dataProxy) => {
  */
 const executeJavaScriptInSandbox = (code) => {
   try {
-    // console.log('执行JavaScript代码:', code);
+
     
     // 处理代码字符串，确保能够正确捕获return值
     let processedCode = code.trim();
@@ -843,7 +843,7 @@ const executeJavaScriptInSandbox = (code) => {
       executableCode = processedCode;
     }
     
-    // console.log('处理后的代码:', executableCode);
+
     
     // 创建沙箱环境变量
     const sandbox = {

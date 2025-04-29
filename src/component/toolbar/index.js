@@ -307,13 +307,13 @@ export default class Toolbar {
     const { cellConfig = {} } = data;
     const { cellButtons = [] } = cellConfig;
     const style = data.getSelectedCellStyle();
-    // console.log('canUndo:', data.canUndo());
+
     this.undoEl.setState(!data.canUndo());
     this.redoEl.setState(!data.canRedo());
     this.mergeEl.setState(data.canUnmerge(), !data.selector.multiple());
     this.autofilterEl.setState(!data.canAutofilter());
     // this.mergeEl.disabled();
-    // console.log('selectedCell:', style, cell);
+
     const { font, format } = style;
     this.formatEl.setState(format);
     this.fontEl.setState(font.name);
@@ -327,7 +327,7 @@ export default class Toolbar {
     this.alignEl.setState(style.align);
     this.valignEl.setState(style.valign);
     this.textwrapEl.setState(style.textwrap);
-    // console.log('freeze is Active:', data.freezeIsActive());
+
     this.freezeEl.setState(data.freezeIsActive());
     this.gridEl.setState(!!data.sheetConfig.gridLine);
     if (cellButtons?.length) {

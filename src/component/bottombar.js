@@ -121,9 +121,6 @@ export default class Bottombar {
     this.items = [];
     this.isInput = false;
     this.moreEl = new DropdownMore((i) => {
-      console.log('DropdownMore clicked:', i);
-      console.log('Current items:', this.items);
-      console.log('Current dataNames:', this.dataNames);
       this.clickSwap2(this.items[i]);
     });
     this.contextMenu = new ContextMenu();

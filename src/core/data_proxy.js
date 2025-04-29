@@ -161,7 +161,7 @@ function copyPaste(srcCellRange, dstCellRange, what, autofill = false) {
   }
   rows.copyPaste(srcCellRange, dstCellRange, what, autofill, (ri, ci, cell) => {
     if (cell && cell.merge) {
-      // console.log('cell:', ri, ci, cell);
+
       const [rn, cn] = cell.merge;
       if (rn <= 0 && cn <= 0) return;
       merges.add(new CellRange(ri, ci, ri + rn, ci + cn));
@@ -308,7 +308,7 @@ function setStyleBorders({ mode, style, color }) {
 function getCellRowByY(y, scrollOffsety) {
   const { rows } = this;
   const fsh = this.freezeTotalHeight();
-  // console.log('y:', y, ', fsh:', fsh);
+
   let inits = rows.height;
   if (fsh + rows.height < y) inits -= scrollOffsety;
 
@@ -326,7 +326,7 @@ function getCellRowByY(y, scrollOffsety) {
     }
   }
   top -= height;
-  // console.log('ri:', ri, ', top:', top, ', height:', height);
+
 
   if (top <= 0) {
     return { ri: -1, top: 0, height };
@@ -393,7 +393,7 @@ export default class DataProxy {
   }
 
   addValidation(mode, ref, validator) {
-    // console.log('mode:', mode, ', ref:', ref, ', validator:', validator);
+
     this.changeData(() => {
       this.validations.add(mode, ref, validator);
     });
@@ -477,7 +477,7 @@ export default class DataProxy {
       navigator.clipboard.writeText(copyText).then(
         () => {},
         (err) => {
-          console.log("text copy to the system clipboard error  ", copyText, err);
+          console.error("Failed to write clipboard contents: ", err);
         }
       );
     }
@@ -489,7 +489,7 @@ export default class DataProxy {
 
   // what: all | text | format
   paste(what = "all", error = () => {}) {
-    // console.log('sIndexes:', sIndexes);
+
     const { clipboard, selector } = this;
     if (clipboard.isClear()) return false;
     if (!canPaste.call(this, clipboard.range, selector.range, error))
@@ -768,7 +768,7 @@ export default class DataProxy {
       } else if (property === "border") {
         setStyleBorders.call(this, value);
       } else if (property === "formula") {
-        // console.log('>>>', selector.multiple());
+
         const { ri, ci, range } = selector;
         if (selector.multiple()) {
           const [rn, cn] = selector.size();
@@ -887,7 +887,7 @@ export default class DataProxy {
   }
   // state: input | finished
   setFormulaCellText(text, ri, ci, state = "input") {
-    // console.log("setCellText:","text:",text,"ri:",ri,"ci:",ci,"state:",state);
+
     const { autoFilter, rows } = this;
 
     // 定义运算符列表
@@ -916,7 +916,7 @@ export default class DataProxy {
         rows.setCellProperty(ri, ci, "f", text);
       } else if (isJSExpression) {
         // 处理JS运算表达式
-        // console.log("检测到JS运算表达式:", text);
+
         
         // 保存原始表达式
         const cell = rows.getCellOrNew(ri, ci);
@@ -927,7 +927,7 @@ export default class DataProxy {
         try {
           // 去掉开头的$符号再计算
           const jsExpressionResult = evaluateJsExpression(text.substring(1), this);
-          //console.log("JS运算表达式结果:", jsExpressionResult);
+
           
           // 设置单元格显示值
           cell.text = jsExpressionResult?.toString() || '';
@@ -942,7 +942,7 @@ export default class DataProxy {
         }
       } else if (isDynamicExpression) {
         // 动态函数表达式处理逻辑
-        // console.log("检测到动态函数表达式:", text);
+
         
         // 保存原始$表达式
         const cell = rows.getCellOrNew(ri, ci);
@@ -953,7 +953,7 @@ export default class DataProxy {
 
         // 计算值并设置错误样式
         const value = evaluateDynamicExpression(text.substring(1), this);
-        // console.log("动态表达式计算结果:", value);
+
         
         // 处理结果
         if (value && typeof value === "string" && value.startsWith("#") && value.endsWith("!")) {
@@ -970,7 +970,7 @@ export default class DataProxy {
               delete cell.style;
             }
           }
-          // console.log("动态函数执行正常值:", value);
+
           // 将计算结果赋值给 cell.text
           cell.text = value?.toString() || '';
         }
@@ -984,7 +984,7 @@ export default class DataProxy {
         const cellRefRegex = /\b([A-Z]+[0-9]+)\b(?!\()/gi;
         updatedFormula = updatedFormula.replace(cellRefRegex, match => match.toUpperCase());
         
-        // console.log("保留标识符大小写的updatedFormula:", updatedFormula);
+
         rows.setCellProperty(ri, ci, "f", updatedFormula);
       } else if (text && text[0] === "=") {
         // 现有公式处理逻辑
@@ -993,7 +993,7 @@ export default class DataProxy {
           text?.replace(EXTRACT_FORMULA_CELL_NAME_REGEX, (match) =>
             match.toUpperCase()
           ) ?? text;
-        // console.log("updatedFormula:", updatedFormula);
+
         const { onFormulaCellFinalized } = this.settings;
       if (onFormulaCellFinalized) {
         const cell = rows.getCellOrNew(ri, ci);
@@ -1017,7 +1017,7 @@ export default class DataProxy {
       }
     } else {
       // 输入状态处理逻辑
-      // console.log("setFormulaCellText 输入状态:",state,"text:",text,"ri:",ri,"ci:",ci);
+
       let nri = ri;
       if (this.unsortedRowMap.has(ri)) {
         nri = this.unsortedRowMap.get(ri);
@@ -1102,7 +1102,7 @@ export default class DataProxy {
     const { left, top, width, height } = this.getSelectedRect();
     const x1 = x - this.cols.indexWidth;
     const y1 = y - this.rows.height;
-    // console.log('x:', x, ',y:', y, 'left:', left, 'top:', top);
+
     return x1 > left && x1 < left + width && y1 > top && y1 < top + height;
   }
 
@@ -1121,7 +1121,7 @@ export default class DataProxy {
   getRect(cellRange) {
     const { scroll, rows, cols, exceptRowSet } = this;
     const { sri, sci, eri, eci } = cellRange;
-    // console.log('sri:', sri, ',sci:', sci, ', eri:', eri, ', eci:', eci);
+
     // no selector
     if (sri < 0 && sci < 0) {
       return {
@@ -1136,7 +1136,7 @@ export default class DataProxy {
     const top = rows.sumHeight(0, sri, exceptRowSet);
     const height = rows.sumHeight(sri, eri + 1, exceptRowSet);
     const width = cols.sumWidth(sci, eci + 1);
-    // console.log('sri:', sri, ', sci:', sci, ', eri:', eri, ', eci:', eci);
+
     let left0 = left - scroll.x;
     let top0 = top - scroll.y;
     const fsh = this.freezeTotalHeight();
@@ -1210,7 +1210,7 @@ export default class DataProxy {
     const { selector, rows } = this;
     if (this.isSingleSelected()) return;
     const [rn, cn] = selector.size();
-    // console.log('merge:', rn, cn);
+
     if (rn > 1 || cn > 1) {
       const { sri, sci } = selector.range;
       this.changeData(() => {
@@ -1219,7 +1219,7 @@ export default class DataProxy {
         this.merges.add(selector.range);
         // delete merge cells
         this.rows.deleteCells(selector.range);
-        // console.log('cell:', cell, this.d);
+
         this.rows.setCell(sri, sci, cell);
       });
     }
@@ -1384,9 +1384,9 @@ export default class DataProxy {
           startIndex: sci,
         });
       }
-      // console.log('type:', type, ', si:', si, ', size:', size);
+
       merges.shift(type, si, -size, (ri, ci, rn, cn) => {
-        // console.log('ri:', ri, ', ci:', ci, ', rn:', rn, ', cn:', cn);
+
         const cell = rows.getCell(ri, ci);
         cell.merge[0] += rn;
         cell.merge[1] += cn;
@@ -1408,7 +1408,7 @@ export default class DataProxy {
       x,
       (i) => cols.getWidth(i)
     );
-    // console.log('fci:', fci, ', ci:', ci);
+
     let x1 = left;
     if (x > 0) x1 += width;
     if (scroll.x !== x1) {
@@ -1431,7 +1431,7 @@ export default class DataProxy {
     );
     let y1 = top;
     if (y > 0) y1 += height;
-    // console.log('ri:', ri, ' ,y:', y1);
+
     if (scroll.y !== y1) {
       scroll.ri = y > 0 ? ri : 0;
       scroll.y = y1;
@@ -1449,7 +1449,7 @@ export default class DataProxy {
     if (cell !== null) {
       if (cell.merge) {
         const [rn, cn] = cell.merge;
-        // console.log('cell.merge:', cell.merge);
+
         if (rn > 0) {
           for (let i = 1; i <= rn; i += 1) {
             height += rows.getHeight(ri + i);
@@ -1462,7 +1462,7 @@ export default class DataProxy {
         }
       }
     }
-    // console.log('data:', this.d);
+
     return {
       left,
       top,
@@ -1570,23 +1570,57 @@ export default class DataProxy {
   }
 
   setCellData(ri, ci, data) {
-    const { rows, rootContext } = this;
-    rows.setCell(ri, ci, data);
-    rootContext?.sheet?.table?.render?.();
+    const { rows } = this;
+    // 保存原始单元格数据
+    const oldCell = rows.getCell(ri, ci) || {};
+    
+    // 合并数据，保留特殊属性
+    const cell = Object.assign({}, oldCell, data);
+    
+    // 确保特殊属性被保留
+    if (oldCell.cellType) {
+      cell.cellType = data.cellType || oldCell.cellType;
+    }
+    
+    if (oldCell.treeData && !data.treeData) {
+      cell.treeData = oldCell.treeData;
+    }
+    
+    if (oldCell.popupData && !data.popupData) {
+      cell.popupData = oldCell.popupData;
+    }
+    
+    if (oldCell.selectedValue && !data.selectedValue) {
+      cell.selectedValue = oldCell.selectedValue;
+    }
+    
+    // 根据单元格类型设置默认值
+    if (cell.cellType === 'tree' && !cell.text) {
+      cell.text = '点击选择';
+    } else if (cell.cellType === 'popup' && !cell.text) {
+      cell.text = '点击打开';
+    } else if (cell.cellType === 'date' && !cell.text) {
+      cell.text = new Date().toISOString().split('T')[0];
+    }
+    
+    // 设置单元格数据
+    rows.setCell(ri, ci, cell);
+    // 触发change事件
+    this.change(this);
   }
 
   // state: input | finished
   setCellText(ri, ci, text, state = 'finished') {
     const { rows, history, validations } = this;
-    // console.log("setCellText:", ri, ci, text, state);
+
     if (state === "finished") {
       history.add(this.getData());
       rows.setCellText(ri, ci, text);
-      // console.log("setCellText-finished:", ri, ci, text, state);
+
     } else {
       rows.setCellText(ri, ci, text);
       this.change(this.getData());
-      // console.log("setCellText-input:", ri, ci, text, state);
+
     }
     // validator
     validations.validate(ri, ci, text);
@@ -1768,7 +1802,7 @@ export default class DataProxy {
         offset += 1;
       }
     }
-    // console.log('min:', min, ', max:', max, ', scroll:', scroll);
+
     for (let i = min + offset; i <= max + offset; i += 1) {
       if (frset.has(i)) {
         offset += 1;
@@ -1802,7 +1836,7 @@ export default class DataProxy {
 
   addStyle(nstyle) {
     const { styles } = this;
-    // console.log('old.styles:', styles, nstyle);
+
     for (let i = 0; i < styles.length; i += 1) {
       const style = styles[i];
       if (helper.equals(style, nstyle)) return i;

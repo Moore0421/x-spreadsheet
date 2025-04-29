@@ -106,6 +106,7 @@ class Rows {
     const row = this.getOrNew(ri);
     if (what === "all") {
       row.cells[ci] = cell;
+
     } else if (what === "text") {
       row.cells[ci] = row.cells[ci] || {};
       row.cells[ci].text = cell.text;
@@ -117,23 +118,23 @@ class Rows {
   }
 
   setCellText(ri, ci, text) {
-    // console.log("setCellText:", ri, ci, text);
+
     const cell = this.getCellOrNew(ri, ci);
     if (cell.editable !== false || this.data.settings.mode === 'design') {
-      // console.log("setCellText-editable:", ri, ci, text);
+
       const valueSetter = this.options.valueSetter;
       if (valueSetter) {
-        // console.log("setCellText-valueSetter:", ri, ci, text);
+
         const result = valueSetter({ ...this, text, cell });
         let retrievedText, formattedText, html;
         if (result && typeof result === "object" && !Array.isArray(result)) {
-          // console.log("setCellText-valueSetter-result:", ri, ci, text);
+
           ({ retrievedText, formattedText, html } = result);
         } else if (Array.isArray(result)) {
-          // console.log("setCellText-valueSetter-result-array:", ri, ci, text);
+
           [retrievedText, formattedText, html] = result;
         } else {
-          // console.log("setCellText-valueSetter-result-else:", ri, ci, text);
+
           retrievedText = result;
           formattedText = "";
           html = "";
@@ -143,7 +144,7 @@ class Rows {
         cell.f = "";
         cell.h = html ?? "";
       } else {
-        // console.log("setCellText-else:", ri, ci, text);
+
         cell.text = text;
         cell.f = "";
         cell.h = "";
@@ -172,7 +173,7 @@ class Rows {
     const deci = dstCellRange.eci;
     const [rn, cn] = srcCellRange.size();
     const [drn, dcn] = dstCellRange.size();
-    // console.log(srcIndexes, dstIndexes);
+
     let isAdd = true;
     let dn = 0;
     if (deri < sri || deci < sci) {
@@ -217,7 +218,7 @@ class Rows {
                     (rn <= 1 && cn <= 1)
                   ) {
                     const result = /[\\.\d]+$/.exec(text);
-                    // console.log('result:', result);
+
                     if (result !== null) {
                       const index = Number(result[0]) + n - 1;
                       ncell.text = text.substring(0, result.index) + index;

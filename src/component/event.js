@@ -18,7 +18,6 @@ export function unbindClickoutside(el) {
 export function bindClickoutside(el, cb) {
   el.xclickoutside = (evt) => {
     // ignore double click
-    // console.log('evt:', evt);
     if (
       evt.detail === 2 ||
       el.contains(evt.target) ||
@@ -37,7 +36,6 @@ export function mouseMoveUp(target, movefunc, upfunc) {
   bind(target, "mousemove", movefunc);
   const t = target;
   t.xEvtUp = (evt) => {
-    // console.log('mouseup>>>');
     unbind(target, "mousemove", movefunc);
     unbind(target, "mouseup", target.xEvtUp);
     upfunc(evt);
@@ -47,7 +45,6 @@ export function mouseMoveUp(target, movefunc, upfunc) {
 
 function calTouchDirection(spanx, spany, evt, cb) {
   let direction = "";
-  // console.log('spanx:', spanx, ', spany:', spany);
   if (Math.abs(spanx) > Math.abs(spany)) {
     // horizontal
     direction = spanx > 0 ? "right" : "left";
@@ -73,7 +70,6 @@ export function bindTouch(target, { move, end }) {
     const spanx = pageX - startx;
     const spany = pageY - starty;
     if (Math.abs(spanx) > 10 || Math.abs(spany) > 10) {
-      // console.log('spanx:', spanx, ', spany:', spany);
       calTouchDirection(spanx, spany, evt, move);
       startx = pageX;
       starty = pageY;

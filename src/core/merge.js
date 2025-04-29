@@ -31,7 +31,7 @@ class Merges {
     for (let i = 0; i < this._.length; i += 1) {
       const it = this._[i];
       if (it.intersects(cellRange)) {
-        // console.log('intersects');
+
         return true;
       }
     }

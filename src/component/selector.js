@@ -134,7 +134,6 @@ function calLAreaOffset(offset) {
   const { top, width, height, l, t, scroll } = offset;
   const ftheight = data.freezeTotalHeight();
   let top0 = top - ftheight;
-  // console.log('ftheight:', ftheight, ', t:', t);
   if (ftheight > t) top0 -= scroll.y;
   return {
     left: l,
@@ -255,7 +254,6 @@ export default class Selector {
   }
 
   resetAreaOffset() {
-    // console.log('offset:', offset);
     const offset = this.data.getSelectedRect();
     const coffset = this.data.getClipboardRect();
     setAllAreaOffset.call(this, offset);
@@ -321,7 +319,6 @@ export default class Selector {
 
   showAutofill(ri, ci) {
     if (ri === -1 && ci === -1) return;
-    // console.log('ri:', ri, ', ci:', ci);
     // const [sri, sci] = this.sIndexes;
     // const [eri, eci] = this.eIndexes;
     const { sri, sci, eri, eci } = this.range;
@@ -334,41 +331,35 @@ export default class Selector {
     const ecn = eci - ci;
     if (scn > 0) {
       // left
-      // console.log('left');
       this.arange = new CellRange(sri, nci, eri, sci - 1);
       // this.saIndexes = [sri, nci];
       // this.eaIndexes = [eri, sci - 1];
       // data.calRangeIndexes2(
     } else if (srn > 0) {
       // top
-      // console.log('top');
       // nri = sri;
       this.arange = new CellRange(nri, sci, sri - 1, eci);
       // this.saIndexes = [nri, sci];
       // this.eaIndexes = [sri - 1, eci];
     } else if (ecn < 0) {
       // right
-      // console.log('right');
       // nci = eci;
       this.arange = new CellRange(sri, eci + 1, eri, nci);
       // this.saIndexes = [sri, eci + 1];
       // this.eaIndexes = [eri, nci];
     } else if (ern < 0) {
       // bottom
-      // console.log('bottom');
       // nri = eri;
       this.arange = new CellRange(eri + 1, sci, nri, eci);
       // this.saIndexes = [eri + 1, sci];
       // this.eaIndexes = [nri, eci];
     } else {
-      // console.log('else:');
       this.arange = null;
       // this.saIndexes = null;
       // this.eaIndexes = null;
       return;
     }
     if (this.arange !== null) {
-      // console.log(this.saIndexes, ':', this.eaIndexes);
       const offset = this.data.getRect(this.arange);
       offset.width += 2;
       offset.height += 2;

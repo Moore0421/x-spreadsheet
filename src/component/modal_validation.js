@@ -168,9 +168,7 @@ export default class ModalValidation extends Modal {
       const attrs = ["mf", "rf", "cf", "of", "svf", "vf", "minvf", "maxvf"];
       for (let i = 0; i < attrs.length; i += 1) {
         const field = this[attrs[i]];
-        // console.log('field:', field);
         if (field.isShow()) {
-          // console.log('it:', it);
           if (!field.validate()) return;
         }
       }
@@ -187,7 +185,6 @@ export default class ModalValidation extends Modal {
           value = this.vf.val();
         }
       }
-      // console.log(mode, ref, type, operator, value);
       this.change("save", mode, ref, {
         type,
         operator,

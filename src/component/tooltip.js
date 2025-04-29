@@ -11,7 +11,7 @@ export default function tooltip(html, target) {
   const el = h("div", `${cssPrefix}-tooltip`).html(html).show();
   document.body.appendChild(el.el);
   const elBox = el.box();
-  // console.log('elBox:', elBox);
+
   el.css("left", `${left + width / 2 - elBox.width / 2}px`).css(
     "top",
     `${top + height + 2}px`,

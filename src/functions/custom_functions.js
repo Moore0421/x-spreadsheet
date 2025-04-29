@@ -1,7 +1,7 @@
 // 获取人员数据函数，支持用户ID参数
 function getPeople(userId) {
   // 使用标准JavaScript语法，通过return返回数据
-  // console.log('getPeople called with userId:', userId);
+
   
   // 如果提供了userId，可以根据ID返回不同的数据
   if (userId) {
@@ -32,7 +32,7 @@ function getPeople(userId) {
 
 // 获取产品数据，也支持参数
 function getProducts(categoryId) {
-  // console.log('getProducts called with categoryId:', categoryId);
+
   
   // 根据分类ID筛选产品
   if (categoryId) {

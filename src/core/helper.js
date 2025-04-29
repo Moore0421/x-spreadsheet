@@ -8,7 +8,7 @@ const mergeDeep = (object = {}, ...sources) => {
     source &&
       Object.keys(source).forEach((key) => {
         const v = source[key];
-        // console.log('k:', key, ', v:', source[key], typeof v, v instanceof Object);
+
         if (
           typeof v === "string" ||
           typeof v === "number" ||
@@ -27,7 +27,7 @@ const mergeDeep = (object = {}, ...sources) => {
         }
       });
   });
-  // console.log('::', object);
+
   return object;
 };
 

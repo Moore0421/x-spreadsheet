@@ -40,7 +40,6 @@ function pagerSizeChange(evt) {
   const ps = PAGER_SIZES[value];
   paper.w = inches2px(ps[1]);
   paper.h = inches2px(ps[2]);
-  // console.log('paper:', ps, paper);
   this.preview();
 }
 function pagerOrientationChange(evt) {
@@ -153,7 +152,6 @@ export default class Print {
       draw.save();
       draw.translate(left, top);
       if (scale < 1) draw.scale(scale, scale);
-      // console.log('ri:', ri, cr.eri, yoffset);
       for (; ri <= cr.eri; ri += 1) {
         const rh = data.rows.getHeight(ri);
         th += rh;
