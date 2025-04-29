@@ -156,7 +156,7 @@ declare module "x-data-spreadsheet" {
     (evnt: SHEET_CHANGE, callback: (data: SheetChangeType) => void): void;
     (evnt: PASTED_CLIPBOARD, callback: (data: any) => void): void;
     (evnt: CUT_CLIPBOARD, callback: (data: any) => void): void;
-    (evnt: COPY_CLIPBOARD, callback: (data: any) => void): void;
+    (evnt: COPIED_CLIPBOARD, callback: (data: any) => void): void;
     (evnt: GRID_LOAD, callback: (data: any) => void): void;
     (
       evnt: ROW_COLUMN_OPERATION,
