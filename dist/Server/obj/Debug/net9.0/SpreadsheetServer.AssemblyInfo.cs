@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("SpreadsheetServer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9154b65d728bcfcf59336ed1bc78d2181218b043")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+82ddd17786641b73a3f51fc10b7508e7f51c0313")]
 [assembly: System.Reflection.AssemblyProductAttribute("SpreadsheetServer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("SpreadsheetServer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
