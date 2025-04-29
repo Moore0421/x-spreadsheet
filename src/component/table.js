@@ -2,6 +2,7 @@ import { stringAt } from "../core/alphabet";
 import { getFontSizePxByPt } from "../core/font";
 import _cell from "../core/cell";
 import { formatm } from "../core/format";
+import { cssPrefix } from "../config";
 
 import { Draw, DrawBox, thinLineWidth, npx } from "../canvas/draw";
 import { REF_ERROR } from "../constants";
@@ -34,7 +35,7 @@ function renderCellBorders(bboxes, translateFunc) {
   const { draw } = this;
   if (bboxes) {
     const rset = new Set();
-    // console.log('bboxes:', bboxes);
+
     bboxes.forEach(({ ri, ci, box }) => {
       if (!rset.has(ri)) {
         rset.add(ri);
@@ -49,14 +50,15 @@ function renderCellBorders(bboxes, translateFunc) {
 export function renderCell(draw, data, rindex, cindex, yoffset = 0) {
   const { sortedRowMap, rows, cols, settings } = data;
   if (rows.isHide(rindex) || cols.isHide(cindex)) return;
-  let nrindex = rindex;
-  if (sortedRowMap.has(rindex)) {
-    nrindex = sortedRowMap.get(rindex);
-  }
-
+  
+  const nrindex = sortedRowMap && sortedRowMap[rindex] ? sortedRowMap[rindex] : rindex;
   const cell = data.getCell(nrindex, cindex);
+  const _cell = data.getCell(rindex, cindex);
   if (cell === null) return;
   let frozen = false;
+  if (settings?.editable === false) {
+    frozen = true;
+  }
   if ("editable" in cell && cell.editable === false) {
     frozen = true;
   }
@@ -127,6 +129,49 @@ export function renderCell(draw, data, rindex, cindex, yoffset = 0) {
       cellText = cell.text ?? "";
     }
 
+    // 处理不同的单元格类型
+    if (cell.cellType) {
+      // 给单元格添加类型标识类
+      dbox.classList = []; 
+      dbox.classList.push(`${cssPrefix}-cell-${cell.cellType}`);
+      
+      // 添加特殊单元格类型的图标或样式
+      switch (cell.cellType) {
+        case 'date':
+          // 如果是日期类型，可以添加一个日历图标或确保日期格式正确
+          if (cellText && cellText.length > 0 && !style.format) {
+            // 如果没有明确的格式，使用日期格式
+            cellText = formatm["date"]?.render(cellText) ?? cellText;
+          }
+          break;
+        case 'tree':
+          // 如果是树形选择器类型，可以添加一个下拉箭头指示
+          draw.dropdown(dbox, 'transparent');
+          // 如果有选中值，添加标题提示
+          if (cell.selectedValue) {
+            dbox.title = `已选择: ${cell.selectedValue}`;
+          }
+          break;
+        case 'popup':
+          // 如果是弹窗类型，添加弹窗图标
+          draw.dropdown(dbox, 'transparent');
+          // 如果已经选择，添加标题提示
+          if (cell.selected) {
+            dbox.title = '已选择';
+          }
+          break;
+        default:
+          // 其他未知类型，不做特殊处理
+          break;
+      }
+    }
+
+    // 不可编辑单元格样式
+    if (frozen) {
+      dbox.classList = dbox.classList || [];
+      dbox.classList.push(`${cssPrefix}-cell-noneditable`);
+    }
+
     if (!isNaN(Number(cellText))) {
       if (cell.style !== 0 && !cell.style) {
         style.align = "right";
@@ -167,6 +212,12 @@ export function renderCell(draw, data, rindex, cindex, yoffset = 0) {
       draw.flipSign(dbox);
     }
   });
+
+  // 为不同类型的单元格添加特殊指示器
+  if (cell.cellType) {
+    // 绘制单元格类型指示器
+    draw.cellTypeIndicator(dbox, cell.cellType);
+  }
 
   draw.drawIcon(dbox, cellMeta);
   if (settings?.comment?.indicatorColor && cell?.c) {
@@ -271,7 +322,7 @@ function renderFixedHeaders(type, viewRange, w, h, tx, ty) {
   if (type === "all" || type === "top") draw.fillRect(ntx, 0, sumWidth, h);
 
   const { sri, sci, eri, eci } = data.selector.range;
-  // console.log(data.selectIndexes);
+
   // draw text
   // text font, align...
   draw.attr(tableFixedHeaderStyle());
@@ -333,15 +384,15 @@ function renderContentGrid({ sri, sci, eri, eci, w, h }, fw, fh, tx, ty) {
   draw.attr(tableGridStyle).translate(fw + tx, fh + ty);
   // const sumWidth = cols.sumWidth(sci, eci + 1);
   // const sumHeight = rows.sumHeight(sri, eri + 1);
-  // console.log('sumWidth:', sumWidth);
+
   // draw.clearRect(0, 0, w, h);
   if (!settings.showGrid || data?.sheetConfig?.gridLine === false) {
     draw.restore();
     return;
   }
-  // console.log('rowStart:', rowStart, ', rowLen:', rowLen);
+
   data.rowEach(sri, eri, (i, y, ch) => {
-    // console.log('y:', y);
+
     if (i !== sri) draw.line([0, y], [w, y]);
     if (i === eri) draw.line([0, y + ch], [w, y + ch]);
   });

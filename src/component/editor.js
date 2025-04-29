@@ -194,7 +194,6 @@ function suggestItemClick(it) {
       eit = "";
     }
     this.inputText = `${sit + it.key}(`;
-    // console.log('inputText:', this.inputText);
     position = this.inputText.length;
     this.inputText += `)${eit}`;
   }
@@ -269,7 +268,6 @@ export default class Editor {
     });
     this.datepicker = new Datepicker();
     this.datepicker.change((d) => {
-      // console.log('d:', d);
       this.setText(dateFormat(d));
       this.clear();
     });
@@ -320,11 +318,10 @@ export default class Editor {
   }
 
   setOffset(offset, suggestPosition = "top") {
-    const { textEl, areaEl, suggest, freeze, el, mention } = this;
+    const { textEl, areaEl, suggest, freeze, el, mention, datepicker } = this;
     if (offset) {
       this.areaOffset = offset;
       const { left, top, width, height, l, t } = offset;
-      // console.log('left:', left, ',top:', top, ', freeze:', freeze);
       const elOffset = { left: 0, top: 0 };
       // top left
       if (freeze.w > l && freeze.h > t) {
@@ -349,6 +346,9 @@ export default class Editor {
       suggest.hide();
       mention.setOffset(sOffset);
       mention.hide();
+      // 设置日期选择器位置
+      datepicker.setOffset(sOffset);
+      datepicker.hide(); // 确保日期选择器初始是隐藏的
     }
   }
 

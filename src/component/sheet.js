@@ -18,6 +18,7 @@ import { constructFormula, getCellName } from "../algorithm/cellInjection";
 import Comment from "./comment";
 import { CELL_REF_REGEX, SHEET_TO_CELL_REF_REGEX } from "../constants";
 import { expr2xy } from "../core/alphabet";
+import Datepicker from './datepicker';
 
 /**
  * @desc throttle fn
@@ -57,7 +58,6 @@ function scrollbarMove() {
   const { data, verticalScrollbar, horizontalScrollbar } = this;
   const { l, t, left, top, width, height } = data.getSelectedRect();
   const tableOffset = this.getTableOffset();
-  // console.log(',l:', l, ', left:', left, ', tOffset.left:', tableOffset.width);
   if (Math.abs(left) + width > tableOffset.width) {
     horizontalScrollbar.move({ left: l + width - tableOffset.width });
   } else {
@@ -66,7 +66,6 @@ function scrollbarMove() {
       horizontalScrollbar.move({ left: l - 1 - fsw });
     }
   }
-  // console.log('top:', top, ', height:', height, ', tof.height:', tableOffset.height);
   if (Math.abs(top) + height > tableOffset.height) {
     verticalScrollbar.move({ top: t + height - tableOffset.height - 1 });
   } else {
@@ -97,7 +96,6 @@ function formulaProgress() {
 }
 
 function selectorSet(multiple, ri, ci, indexesUpdated = true, moving = false) {
-  // console.log('selectorSet:', 'multiple:', multiple, 'ri:', ri, 'ci:', ci, 'indexesUpdated:', indexesUpdated, 'moving:', moving);
   const { table, selector, toolbar, data, contextMenu, editor } = this;
   const cell = data.getCell(ri, ci);
   if (multiple) {
@@ -133,7 +131,6 @@ function selectorMove(multiple, direction, isMoving = true) {
   if (multiple) {
     [ri, ci] = selector.moveIndexes;
   }
-  // console.log('selector.move:', ri, ci);
   if (direction === "left") {
     if (ci > 0) ci -= 1;
   } else if (direction === "right") {
@@ -166,7 +163,6 @@ function selectorMove(multiple, direction, isMoving = true) {
 
 // private methods
 function overlayerMousemove(evt) {
-  // console.log('x:', evt.offsetX, ', y:', evt.offsetY);
   if (evt.buttons !== 0) return;
   if (evt.target.className === `${cssPrefix}-resizer-hover`) return;
   const { offsetX, offsetY } = evt;
@@ -216,7 +212,6 @@ function overlayerMousescroll(evt) {
   const { verticalScrollbar, horizontalScrollbar, data } = this;
   const { top } = verticalScrollbar.scroll();
   const { left } = horizontalScrollbar.scroll();
-  // console.log('evt:::', evt.wheelDelta, evt.detail * 40);
 
   const { rows, cols } = data;
 
@@ -231,7 +226,6 @@ function overlayerMousescroll(evt) {
     } while (v <= 0);
     return v;
   };
-  // console.log('deltaX', deltaX, 'evt.detail', evt.detail);
   // if (evt.detail) deltaY = evt.detail * 40;
   const moveY = (vertical) => {
     if (vertical > 0) {
@@ -295,7 +289,6 @@ function verticalScrollbarSet() {
   const { data, verticalScrollbar } = this;
   const { height } = this.getTableOffset();
   const erth = data.exceptRowTotalHeight(0, -1);
-  // console.log('erth:', erth);
   verticalScrollbar.set(height, data.rows.totalHeight() - erth);
 }
 
@@ -410,8 +403,6 @@ function toolbarChangePaintformatPaste() {
 }
 
 function overlayerMousedown(evt) {
-  // console.log(':::::overlayer.mousedown:', evt.detail, evt.button, evt.buttons, evt.shiftKey);
-  // console.log('evt.target.className:', evt.target.className);
   const { selector, data, table, sortFilter } = this;
   const { offsetX, offsetY } = evt;
   const isAutofillEl = evt.target.className === `${cssPrefix}-selector-corner`;
@@ -663,9 +654,7 @@ function overlayerMousedown(evt) {
     }
   }
 
-  // console.log('ri:', ri, ', ci:', ci);
   if (!evt.shiftKey) {
-    // console.log('selectorSetStart:::');
     if (isAutofillEl) {
       selector.showAutofill(ri, ci);
     } else {
@@ -676,7 +665,6 @@ function overlayerMousedown(evt) {
     mouseMoveUp(
       window,
       (e) => {
-        // console.log('mouseMoveUp::::');
         ({ ri, ci } = data.getCellRectByXY(e.offsetX, e.offsetY));
         if (isAutofillEl) {
           selector.showAutofill(ri, ci);
@@ -705,7 +693,6 @@ function overlayerMousedown(evt) {
 
   if (!isAutofillEl && evt.buttons === 1) {
     if (evt.shiftKey) {
-      // console.log('shiftKey::::');
       selectorSet.call(this, true, ri, ci);
     }
   }
@@ -716,7 +703,6 @@ function editorSetOffset() {
   const sOffset = data.getSelectedRect();
   const tOffset = this.getTableOffset();
   let sPosition = "top";
-  // console.log('sOffset:', sOffset, ':', tOffset);
   if (sOffset.top > tOffset.height / 2) {
     sPosition = "bottom";
   }
@@ -725,19 +711,31 @@ function editorSetOffset() {
 
 function editorSet() {
   const { editor, data } = this;
-  if (editor.formulaCell) return;
-  if (data.settings.mode === "read") return;
+  const selectedCell = data.getSelectedCell(); // 获取一次，避免重复调用
+  
+  // Check if the selected cell has a custom type
+  if (selectedCell && selectedCell.cellType) {
+    return; // Don't show the default editor for custom types
+  }
+  
+  // Existing editorSet logic
+  if (editor.formulaCell) {
+    return;
+  }
+
+  if (data.settings.mode === "read") {
+    return;
+  }
   
   // 在预览模式下检查单元格是否可编辑
-  const cell = data.getSelectedCell();
-  if ((data.settings.mode === "preview" || data.settings.mode === "normal" || data.settings.mode === "enabled") && cell && cell.editable === false) {
+  // const cell = data.getSelectedCell(); // Use selectedCell obtained earlier
+  if ((data.settings.mode === "preview" || data.settings.mode === "normal" || data.settings.mode === "enabled") && selectedCell && selectedCell.editable === false) {
     return;
   }
   
   editorSetOffset.call(this);
   
   // 如果cell为null，我们需要创建一个新的单元格
-  const selectedCell = data.getSelectedCell();
   if (!selectedCell) {
     const { ri, ci } = data.selector;
     data.rows.getCellOrNew(ri, ci);
@@ -802,7 +800,6 @@ function colResizerFinished(cRect, distance) {
 }
 
 function dataSetCellText(text, state = "finished") {
-  // console.log('dataSetCellText:', 'text:', text, 'state:', state);
   const {
     data,
     editor,
@@ -826,7 +823,6 @@ function dataSetCellText(text, state = "finished") {
   const trimmedText = text?.trim?.();
   if (editor.formulaCell && state === "finished") {
     const { ri, ci } = editor.formulaCell;
-    // console.log('dataSetCellText 调用 data.setFormulaCellText (formulaCell):', 'text:', inputText, 'ri:', ri, 'ci:', ci, 'state:', state);
     data.setFormulaCellText(inputText, ri, ci, state);
     this.trigger("cell-edited", inputText, ri, ci);
     this.trigger("cell-edit-finished", text, ri, ci);
@@ -837,13 +833,11 @@ function dataSetCellText(text, state = "finished") {
     trimmedText?.startsWith(trigger) &&
     trimmedText?.split(" ").length === 1
   ) {
-    // console.log('dataSetCellText 调用 data.setFormulaCellText (trigger):', 'text:', inputText, 'ri:', data.selector.ri, 'ci:', data.selector.ci, 'state:', state);
     const { ri, ci } = data.selector;
     data.setFormulaCellText(inputText, ri, ci, state);
     this.trigger("cell-edited", inputText, ri, ci);
     this.trigger("cell-edit-finished", text, ri, ci);
   } else if (!editor.formulaCell) {
-    // console.log('dataSetCellText 调用 data.setCellText:', 'text:', text, 'ri:', ri, 'ci:', ci, 'state:', state);
     data.setFormulaCellText(text, ri, ci, state);
     this.trigger("cell-edited", text, ri, ci);
     this.trigger("cell-edit-finished", text, ri, ci);
@@ -885,6 +879,27 @@ function insertDeleteRowColumn(type) {
     data.setSelectedCellAttr("isDataCell", true);
   } else if (type === "cancel-data-cell") {
     data.setSelectedCellAttr("isDataCell", false);
+  } else if (type === "cell-editable") {
+    data.setSelectedCellAttr("editable", true);
+    this.table.render();
+  } else if (type === "cell-non-editable") {
+    data.setSelectedCellAttr("editable", false);
+    this.table.render();
+  } else if (type === "cell-type-text") {
+    data.setSelectedCellAttr("cellType", "none");
+    this.table.render();
+  } else if (type === "cell-type-date") {
+    data.setSelectedCellAttr("cellType", "date");
+    data.setSelectedCellAttr("text", new Date().toISOString().split("T")[0]);
+    this.table.render();
+  } else if (type === "cell-type-tree") {
+    data.setSelectedCellAttr("cellType", "tree");
+    data.setSelectedCellAttr("text", "点击选择");
+    this.table.render();
+  } else if (type === "cell-type-popup") {
+    data.setSelectedCellAttr("cellType", "popup");
+    data.setSelectedCellAttr("text", "点击打开");
+    this.table.render();
   }
   clearClipboard.call(this);
   sheetReset.call(this);
@@ -933,7 +948,7 @@ function toolbarChange(type, value) {
 }
 
 function sortFilterChange(ci, order, operator, value) {
-  // console.log('sort:', sortDesc, operator, value);
+
   this.data.setAutoFilter(ci, order, operator, value);
   sheetReset.call(this);
 }
@@ -1017,7 +1032,7 @@ function sheetInitEvents() {
     });
 
   selector.inputChange = (v) => {
-    // console.log('editor.inputChange:', 'v:', v);
+
     dataSetCellText.call(this, v, "input");
     editorSet.call(this);
   };
@@ -1144,7 +1159,7 @@ function sheetInitEvents() {
     if (!this.focusing) return;
     const keyCode = evt.keyCode || evt.which;
     const { key, ctrlKey, shiftKey, metaKey } = evt;
-    // console.log('keydown.evt: ', keyCode);
+
     if (ctrlKey || metaKey) {
       // const { sIndexes, eIndexes } = selector;
       // let what = 'all';
@@ -1226,7 +1241,6 @@ function sheetInitEvents() {
           break;
       }
     } else {
-      // console.log('evt.keyCode:', evt.keyCode);
       switch (keyCode) {
         case 32:
           if (shiftKey) {
@@ -1332,13 +1346,14 @@ function sheetInitEvents() {
 export default class Sheet {
   constructor(targetEl, data, options = {}) {
     this.options = options;
+    this.sheetIndex = data.settings?.sheetIndex || 1;
+    this.data = data;
     this.eventMap = createEventEmitter();
     const { view, showToolbar, showContextmenu } = data.settings;
     this.el = h("div", `${cssPrefix}-sheet`);
     this.toolbar = new Toolbar(this, data, view.width, !showToolbar);
     this.print = new Print(data);
     targetEl.children(this.toolbar.el, this.el, this.print.el);
-    this.data = data;
     // table
     this.tableEl = h("canvas", `${cssPrefix}-table`);
     // resizer
@@ -1377,6 +1392,115 @@ export default class Sheet {
     this.sortFilter = new SortFilter();
     this.comment = new Comment(this, () => this.getRect());
     this.hoverTimer = null;
+    
+    // 导入自定义组件
+    const TreeSelector = options.components?.TreeSelector || this.options.TreeSelector;
+    const PopupDialog = options.components?.PopupDialog || this.options.PopupDialog;
+    
+    // 导入或创建树形选择器
+    this.treeSelector = null;
+    if (TreeSelector) {
+      try {
+        this.treeSelector = new TreeSelector(options.treeSelector || {});
+        // 如果创建了树形选择器，将它添加到DOM中
+        if (this.treeSelector) {
+          this.el.child(this.treeSelector.el);
+        }
+      } catch (e) {
+        console.error('创建树形选择器失败:', e);
+      }
+    } else {
+      // 如果没有提供TreeSelector，使用内置的
+      try {
+        const TreeSelectorInternal = require('./tree-selector').default;
+        this.treeSelector = new TreeSelectorInternal(options.treeSelector || {});
+        this.el.child(this.treeSelector.el);
+      } catch (e) {
+        console.error('创建内置树形选择器失败:', e);
+      }
+    }
+    
+    // 导入或创建弹窗
+    this.popupDialog = null;
+    if (PopupDialog) {
+      try {
+        this.popupDialog = new PopupDialog(options.popupDialog || {});
+        // 弹窗直接添加到body，不需要添加到el中
+      } catch (e) {
+        console.error('创建弹窗失败:', e);
+      }
+    } else {
+      // 如果没有提供PopupDialog，使用内置的
+      try {
+        const PopupDialogInternal = require('./popup-dialog').default;
+        this.popupDialog = new PopupDialogInternal(options.popupDialog || {});
+      } catch (e) {
+        console.error('创建内置弹窗失败:', e);
+      }
+    }
+    
+    // 创建树形编辑器
+    try {
+      const TreeEditor = require('./tree-editor').default;
+      this.treeEditor = new TreeEditor(options.treeEditor || {});
+      this.treeEditor.change = (params) => {
+        const { ri, ci, treeData } = params;
+        // 更新单元格的treeData
+        const cell = this.data.getCell(ri, ci) || {};
+        cell.treeData = treeData;
+        
+        // 如果树形数据有标签，用它们生成一个简短的描述
+        let labelText = '点击选择';
+        if (treeData && treeData.length > 0) {
+          const labels = treeData.map(item => item.label).slice(0, 3);
+          if (labels.length > 0) {
+            labelText = labels.join(', ');
+            if (treeData.length > 3) {
+              labelText += '...';
+            }
+          }
+        }
+        // 更新单元格文本
+        cell.text = labelText;
+        // 确保单元格是树形类型
+        cell.cellType = 'tree';
+        // 更新到数据层
+        this.data.setCellData(ri, ci, cell);
+        // 重新渲染表格
+        this.table.render();
+      };
+      document.body.appendChild(this.treeEditor.el.el);
+    } catch (e) {
+      console.error('创建树形编辑器失败:', e);
+    }
+    
+    // 创建弹窗内容编辑器
+    try {
+      const PopupEditor = require('./popup-editor').default;
+      this.popupEditor = new PopupEditor(options.popupEditor || {});
+      this.popupEditor.change = (params) => {
+        const { ri, ci, popupData } = params;
+        // 更新单元格的popupData
+        const cell = this.data.getCell(ri, ci) || {};
+        cell.popupData = popupData;
+        // 更新单元格文本
+        cell.text = '点击打开';
+        // 确保单元格是弹窗类型
+        cell.cellType = 'popup';
+        // 更新到数据层
+        this.data.setCellData(ri, ci, cell);
+        // 重新渲染表格
+        this.table.render();
+      };
+      document.body.appendChild(this.popupEditor.el.el);
+    } catch (e) {
+      console.error('创建弹窗编辑器失败:', e);
+    }
+    
+    // 创建日期选择器
+    this.datepicker = new Datepicker();
+    document.body.appendChild(this.datepicker.el.el);
+    
     // root element
     this.el.children(
       this.tableEl,
@@ -1402,6 +1526,132 @@ export default class Sheet {
     if ((options.mode === 'preview' || options.mode === 'enabled') && this.toolbar) {
       this.toolbar.el.hide();
     }
+    
+    // 添加事件监听器
+    this.on('show-tree-selector', ({ ri, ci, cell }) => {
+      if (this.treeSelector) {
+        // 设置树形数据
+        this.treeSelector.setItems(cell.treeData || []);
+        
+        // 设置回调函数
+        this.treeSelector.setChange((selectedItem) => {
+          this.data.setCellText(ri, ci, selectedItem.label);
+          this.table.render();
+        });
+        
+        // 显示树形选择器
+        this.treeSelector.show();
+      }
+    });
+    
+    this.on('show-tree-editor', ({ ri, ci, cell }) => {
+      if (this.treeEditor) {
+        // 设置当前编辑的单元格
+        this.treeEditor.setCell(ri, ci, cell);
+        
+        // 计算位置 - 尽量居中显示
+        const viewRect = this.getRect();
+        const editorWidth = this.treeEditor.width;
+        const editorHeight = this.treeEditor.height;
+        
+        // 默认居中
+        let left = viewRect.left + (viewRect.width - editorWidth) / 2;
+        let top = viewRect.top + (viewRect.height - editorHeight) / 2;
+        
+        // 确保不超出视窗
+        left = Math.max(0, Math.min(left, window.innerWidth - editorWidth));
+        top = Math.max(0, Math.min(top, window.innerHeight - editorHeight));
+        
+        // 设置编辑器位置
+        this.treeEditor.el
+          .css('position', 'absolute')
+          .css('left', `${left}px`)
+          .css('top', `${top}px`);
+        
+        // 显示编辑器
+        this.treeEditor.show();
+      }
+    });
+    
+    this.on('show-popup', ({ ri, ci, cell }) => {
+      if (this.popupDialog) {
+        // 获取弹窗数据
+        const popupData = cell.popupData || options.popupData || {
+          title: '弹窗标题',
+          width: 400,
+          height: 300,
+          content: '<div style="padding:10px">弹窗内容</div>'
+        };
+        
+        // 设置标题
+        this.popupDialog.setTitle(popupData.title);
+        
+        // 设置尺寸
+        this.popupDialog.setSize(popupData.width, popupData.height);
+        
+        // 设置内容
+        this.popupDialog.setContent(popupData.content);
+        
+        // 设置确认回调
+        this.popupDialog.onConfirm = () => {
+          // 更新单元格的选择状态
+          this.data.setCellProperty(ri, ci, 'selected', true);
+          // 更新单元格文本
+          this.data.setCellText(ri, ci, '已选择');
+          
+          // 重新渲染表格
+          this.table.render();
+        };
+        
+        // 显示弹窗
+        this.popupDialog.show();
+      }
+    });
+    
+    this.on('show-popup-editor', ({ ri, ci, cell }) => {
+      if (this.popupEditor) {
+        // 设置当前编辑的单元格
+        this.popupEditor.setCell(ri, ci, cell);
+        
+        // 计算位置 - 尽量居中显示
+        const viewRect = this.getRect();
+        const editorWidth = this.popupEditor.width;
+        const editorHeight = this.popupEditor.height;
+        
+        // 默认居中
+        let left = viewRect.left + (viewRect.width - editorWidth) / 2;
+        let top = viewRect.top + (viewRect.height - editorHeight) / 2;
+        
+        // 确保不超出视窗
+        left = Math.max(0, Math.min(left, window.innerWidth - editorWidth));
+        top = Math.max(0, Math.min(top, window.innerHeight - editorHeight));
+        
+        // 设置编辑器位置
+        this.popupEditor.el
+          .css('position', 'absolute')
+          .css('left', `${left}px`)
+          .css('top', `${top}px`);
+        
+        // 显示弹窗编辑器
+        this.popupEditor.show();
+      }
+    });
+    
+    this.on('show-datepicker', ({ ri, ci, cell }) => {
+      if (this.datepicker) {
+        // 设置当前编辑的单元格
+        this.datepicker.setCell(ri, ci, cell);
+        
+        // 设置回调函数
+        this.datepicker.setChange((formattedDate) => {
+          this.data.setCellText(ri, ci, formattedDate);
+          this.table.render();
+        });
+        
+        // 显示弹窗
+        this.datepicker.show();
+      }
+    });
   }
 
   on(eventName, func) {
@@ -1510,24 +1760,53 @@ export default class Sheet {
 
   dblclickHandler(evt) {
     const { data } = this;
-    // 双击时检查是否可编辑
     const { ri, ci } = data.getCellRectByXY(evt.offsetX, evt.offsetY);
-    if (ri === -1 || ci === -1) return;
-    
-    const cell = this.data.getCell(ri, ci);
+    const cell = this.data.rows.getCell(ri, ci);
+    // 检查当前模式
     const mode = this.data.settings?.mode;
-
-    // 如果是启用模式则不允许全部单元格编辑
-    if (mode === 'enabled') {
+    // 如果单元格不可编辑且不是设计模式
+    if (cell && cell.editable === false && mode !== 'design') {
       return;
     }
-    
-    // 如果是不可编辑单元格且不是设计模式，则阻止编辑
-    if (cell && cell.editable === false && mode === 'preview') {
-      return;
+    // 根据单元格类型处理不同的编辑方式
+    if (cell && cell.cellType && cell.cellType !== "none") {
+      // 选择单元格以确保位置正确
+      this.selectCell(ri, ci);
+      // 计算单元格位置信息
+      const rect = data.cellRect(ri, ci);
+      if (!rect) {
+        editorSet.call(this);
+        return;
+      }
+      // 根据不同类型使用不同的编辑器或弹窗
+      if (cell.cellType === 'date') {
+        // 日期选择器处理逻辑
+        this.trigger('show-datepicker', { ri, ci, cell });
+        return;
+      } else if (cell.cellType === 'tree') {
+        // 触发树形选择器事件
+        if (mode === 'design') {
+          // 设计模式：允许编辑树形数据
+          this.trigger('show-tree-editor', { ri, ci, cell });
+        } else {
+          // 预览模式：只允许选择
+          this.trigger('show-tree-selector', { ri, ci, cell });
+        }
+        return; // 不要继续使用默认编辑器
+      } else if (cell.cellType === 'popup') {
+        // 触发弹窗事件
+        if (mode === 'design') {
+          // 设计模式：允许编辑弹窗内容
+          this.trigger('show-popup-editor', { ri, ci, cell });
+        } else {
+          // 预览模式：只显示弹窗
+          this.trigger('show-popup', { ri, ci, cell });
+        }
+        return; // 不要继续使用默认编辑器
+      }
     }
-    
-    // 不需要传递参数，editorSet会自动获取选中的单元格
+    // 常规编辑处理
     editorSet.call(this);
   }
+  
 }

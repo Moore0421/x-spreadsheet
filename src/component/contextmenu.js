@@ -34,6 +34,13 @@ const menuItems = [
   { key: "divider" },
   { key: "validation", title: tf("contextmenu.validation") },
   { key: "divider" },
+  { key: "cell-type", title: tf("contextmenu.cellType"), subMenus: [
+    { key: "cell-type-text", title: tf("contextmenu.cellTypeText") },
+    { key: "cell-type-date", title: tf("contextmenu.cellTypeDate") },
+    { key: "cell-type-tree", title: tf("contextmenu.cellTypeTree") },
+    { key: "cell-type-popup", title: tf("contextmenu.cellTypePopup") },
+  ]},
+  { key: "divider" },
   { key: "cell-editable", title: tf("contextmenu.celleditable") },
   { key: "cell-non-editable", title: tf("contextmenu.cellnoneditable") },
   { key: "divider" },

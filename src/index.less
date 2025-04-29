@@ -1542,10 +1542,6 @@ form fieldset {
   cursor: pointer;
   user-select: none;
   color: #666;
-  
-  &:hover {
-    background: rgba(0, 0, 0, 0.05); 
-  }
 
   &.left {
     border-right: 1px solid #e0e2e4;
@@ -1571,4 +1567,288 @@ form fieldset {
     display: inline-flex;
   }
   
+}
+
+// 树形选择器样式
+.x-spreadsheet-tree-selector {
+  position: absolute;
+  background: #fff;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+  min-width: 150px;
+  max-height: 300px;
+  overflow: auto;
+  padding: 5px 0;
+}
+
+.x-spreadsheet-tree-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.x-spreadsheet-tree-item {
+  padding: 5px 10px;
+  cursor: pointer;
+  position: relative;
+  
+  > span {
+    display: block;
+    padding-left: 10px;
+  }
+}
+
+.x-spreadsheet-tree-sublist {
+  margin: 0;
+  padding: 0 0 0 15px;
+  list-style: none;
+}
+
+// 弹窗样式
+.x-spreadsheet-popup-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 100;
+}
+
+.x-spreadsheet-popup-dialog {
+  position: fixed;
+  background: #fff;
+  border-radius: 5px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  z-index: 101;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.x-spreadsheet-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.x-spreadsheet-popup-title {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.x-spreadsheet-popup-close {
+  cursor: pointer;
+  font-size: 20px;
+  color: #999;
+  
+  &:hover {
+    color: #333;
+  }
+}
+
+.x-spreadsheet-popup-content {
+  flex: 1;
+  padding: 15px;
+  overflow: auto;
+}
+
+.x-spreadsheet-popup-footer {
+  padding: 10px 15px;
+  border-top: 1px solid #eee;
+  text-align: right;
+}
+
+.x-spreadsheet-popup-button {
+  padding: 5px 15px;
+  margin-left: 10px;
+  border: 1px solid #ddd;
+  background: #f3f3f3;
+  border-radius: 3px;
+  cursor: pointer;
+  
+  &:hover {
+    background: #e9e9e9;
+  }
+  
+  &.x-spreadsheet-popup-confirm {
+    background: #4b89ff;
+    border-color: #4b89ff;
+    color: #fff;
+    
+    &:hover {
+      background: #3a78f1;
+    }
+  }
+}
+
+// 树形选择器样式
+.@{css-prefix}-tree-selector {
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+  position: absolute;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  width: 200px;
+  max-height: 300px;
+  overflow: auto;
+  z-index: 10;
+
+  .@{css-prefix}-tree-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .@{css-prefix}-tree-item {
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: background 0.2s;
+
+    > span {
+      display: block;
+    }
+
+    // 子列表样式
+    .@{css-prefix}-tree-sublist {
+      list-style: none;
+      padding-left: 15px;
+      margin: 5px 0 0 0;
+    }
+  }
+}
+
+// 树形编辑器样式
+.@{css-prefix}-tree-editor {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  overflow: hidden;
+}
+
+// 弹窗对话框样式
+.@{css-prefix}-popup-dialog {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  overflow: hidden;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  .@{css-prefix}-popup-header {
+    padding: 10px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f5f5f5;
+  }
+
+  .@{css-prefix}-popup-title {
+    font-weight: bold;
+  }
+
+  .@{css-prefix}-popup-close {
+    cursor: pointer;
+    font-size: 18px;
+  }
+
+  .@{css-prefix}-popup-content {
+    padding: 15px;
+    overflow: auto;
+    max-height: 400px;
+  }
+
+  .@{css-prefix}-popup-footer {
+    padding: 10px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: flex-end;
+    background: #f5f5f5;
+  }
+
+  .@{css-prefix}-popup-button {
+    padding: 5px 15px;
+    margin-left: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+
+    &.@{css-prefix}-popup-cancel {
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+    }
+
+    &.@{css-prefix}-popup-confirm {
+      background: #4b89ff;
+      color: #fff;
+    }
+  }
+}
+
+// 弹窗遮罩层
+.@{css-prefix}-popup-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 9998;
+}
+
+// 弹窗编辑器样式
+.@{css-prefix}-popup-editor {
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  overflow: hidden;
+}
+
+// 单元格类型样式
+.@{css-prefix}-cell-tree {
+  position: relative;
+  cursor: pointer;
+  
+  &:after {
+    content: "▼";
+    position: absolute;
+    right: 5px;
+    color: #999;
+    font-size: 10px;
+  }
+}
+
+.@{css-prefix}-cell-popup {
+  position: relative;
+  cursor: pointer;
+  
+  &:after {
+    content: "⊕";
+    position: absolute;
+    right: 5px;
+    color: #999;
+    font-size: 12px;
+  }
+}
+
+.@{css-prefix}-cell-date {
+  position: relative;
+  cursor: pointer;
+  
+  &:after {
+    content: "📅";
+    position: absolute;
+    right: 5px;
+    color: #999;
+    font-size: 12px;
+  }
 }

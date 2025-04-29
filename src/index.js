@@ -10,6 +10,8 @@ import { AVAILABLE_FEATURES, SHEET_TO_CELL_REF_REGEX } from "./constants";
 import { getNewSheetName, stox } from "./utils";
 import ExcelExport from "./component/excel-export";
 import { getPeople, getProducts } from "./functions/custom_functions";
+import TreeSelector from "./component/tree-selector";
+import PopupDialog from "./component/popup-dialog";
 
 class Spreadsheet {
 
@@ -28,6 +30,25 @@ class Spreadsheet {
         enableTimeStamp: false,
       },
       mode: mode,
+      components: {
+        TreeSelector,
+        PopupDialog
+      },
+      // 示例树形数据
+      treeData: [
+        { label: '选项1', value: 'option1' },
+        { 
+          label: '选项2', 
+          value: 'option2',
+          children: [
+            { label: '子选项2-1', value: 'option2-1' },
+            { label: '子选项2-2', value: 'option2-2' }
+          ]
+        },
+        { label: '选项3', value: 'option3' },
+      ],
+      // 示例弹窗内容
+      popupContent: '这是一个自定义弹窗，你可以在这里添加任何内容。',
       ...options,
     };
     

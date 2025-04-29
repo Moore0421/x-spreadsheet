@@ -58,6 +58,11 @@ export default {
     inputRowId: '请输入行ID',
     setDataCell: '设置为数据格',
     cancelDataCell: '取消数据格',
+    cellType: '单元格类型',
+    cellTypeText: '默认文本',
+    cellTypeDate: '日期选择器',
+    cellTypeTree: '树形选择器',
+    cellTypePopup: '弹窗选择器',
   },
   print: {
     size: "纸张大小",

@@ -125,27 +125,25 @@ class DrawBox {
     const iconX = x + indent;
     const iconY = y + (height - iconSize) / 2;
 
-    if(this.hasChildren) {
+    if (this.hasChildren) {
       // 绘制展开/折叠图标
-      draw.save()
-        .beginPath()
-        .strokeStyle('#666')
-        .lineWidth(1);
+      draw.save().beginPath().strokeStyle("#666").lineWidth(1);
 
-      if(this.expanded) {
+      if (this.expanded) {
         // 绘制展开状态的-号
-        draw.moveTo(iconX, iconY + iconSize/2)
-            .lineTo(iconX + iconSize, iconY + iconSize/2);
+        draw
+          .moveTo(iconX, iconY + iconSize / 2)
+          .lineTo(iconX + iconSize, iconY + iconSize / 2);
       } else {
         // 绘制折叠状态的+号
-        draw.moveTo(iconX, iconY + iconSize/2)
-            .lineTo(iconX + iconSize, iconY + iconSize/2)
-            .moveTo(iconX + iconSize/2, iconY)
-            .lineTo(iconX + iconSize/2, iconY + iconSize);
+        draw
+          .moveTo(iconX, iconY + iconSize / 2)
+          .lineTo(iconX + iconSize, iconY + iconSize / 2)
+          .moveTo(iconX + iconSize / 2, iconY)
+          .lineTo(iconX + iconSize / 2, iconY + iconSize);
       }
-      
-      draw.stroke()
-          .restore();
+
+      draw.stroke().restore();
     }
 
     return indent + (this.hasChildren ? iconSize + 5 : 0);
@@ -201,7 +199,6 @@ class Draw {
   }
 
   resize(width, height) {
-    // console.log('dpr:', dpr);
     this.el.style.width = `${width}px`;
     this.el.style.height = `${height}px`;
     this.el.width = npx(width);
@@ -410,7 +407,6 @@ class Draw {
     ctx.lineWidth = thinLineWidth();
     ctx.strokeStyle =
       !!data.sheetConfig?.gridLine === false ? (color ?? "#ffffff") : color;
-    // console.log('style:', style);
     if (style === "medium") {
       ctx.lineWidth = npx(2) - 0.5;
     } else if (style === "thick") {
@@ -489,7 +485,6 @@ class Draw {
     if (borderTop) {
       this.border(...borderTop);
       const isDouble = borderTop[0] === "double";
-      // console.log('box.topxys:', box.topxys());
 
       this.borderLine(isDouble, "top", ...box.topxys());
     }
@@ -638,6 +633,41 @@ class Draw {
     ctx.clip();
     ctx.fill();
     dtextcb();
+    ctx.restore();
+  }
+
+  // 绘制单元格类型指示器
+  cellTypeIndicator(box, cellType) {
+    const { x, y, width, height } = box;
+    const { ctx } = this;
+    ctx.save();
+
+    // 绘制指示器位置，右上角
+    const indicatorSize = 8;
+    const indicatorX = x + width - indicatorSize - 2;
+    const indicatorY = y + 2;
+
+    // 根据不同类型设置不同颜色
+    let color = "#3f51b5"; // 默认颜色
+
+    if (cellType === "date") {
+      color = "#4caf50"; // 日期类型为绿色
+    } else if (cellType === "tree") {
+      color = "#ff9800"; // 树形选择器为橙色
+    } else if (cellType === "popup") {
+      color = "#e91e63"; // 弹窗类型为粉色
+    }
+
+    // 绘制小圆点
+    this.attr({
+      fillStyle: color,
+    });
+
+    ctx.beginPath();
+    ctx.arc(indicatorX, indicatorY, indicatorSize / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.closePath();
+
     ctx.restore();
   }
 }

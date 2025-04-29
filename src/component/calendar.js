@@ -21,7 +21,6 @@ function monthDays(year, month, cdate) {
       const index = i * 7 + j;
       const d = weekday(startDate, index);
       const disabled = d.getMonth() !== month;
-      // console.log('d:', d, ', cdate:', cdate);
       const active = d.getMonth() === cdate.getMonth() && d.getDate() === cdate.getDate();
       datess[i][j] = { d, disabled, active };
     }
@@ -89,7 +88,8 @@ export default class Calendar {
     const { value } = this;
     // 确保months存在
     const months = t('calendar.months') || [];
-    this.headerLeftEl.html(`${months[value.getMonth()] || ''} ${value.getFullYear()}`);
+    const headerText = `${months[value.getMonth()] || ''} ${value.getFullYear()}`;
+    this.headerLeftEl.html(headerText);
   }
 
   buildBody() {
