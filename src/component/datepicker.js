@@ -16,6 +16,9 @@ export default class Datepicker {
     // 当前选择的日期
     this.value = null;
 
+    // 新增，当前视图：day/month/year
+    this.view = "day";
+
     // 创建主容器
     this.el = h("div", `${cssPrefix}-datepicker`)
       .css("width", `${this.width}px`)
@@ -33,7 +36,7 @@ export default class Datepicker {
       .css("border-bottom", "1px solid #e0e0e0")
       .css("display", "flex")
       .css("justify-content", "space-between")
-      .css('cursor', 'move')
+      .css("cursor", "move")
       .css("align-items", "center");
 
     this.title = h("div", `${cssPrefix}-datepicker-title`)
@@ -183,10 +186,16 @@ export default class Datepicker {
       .css("padding", "0 10px")
       .html("&lt;")
       .on("click", () => {
-        this.currentMonth -= 1;
-        if (this.currentMonth < 0) {
-          this.currentMonth = 11;
-          this.currentYear -= 1;
+        if (this.view === "day") {
+          this.currentMonth -= 1;
+          if (this.currentMonth < 0) {
+            this.currentMonth = 11;
+            this.currentYear -= 1;
+          }
+        } else if (this.view === "month") {
+          this.currentYear -= 1; // 月份选择时，左右箭头切换年份
+        } else if (this.view === "year") {
+          this.currentYear -= 12; // 年份选择时，左右箭头切换年份区间
         }
         this.updateCalendar();
       });
@@ -203,10 +212,16 @@ export default class Datepicker {
       .css("padding", "0 10px")
       .html("&gt;")
       .on("click", () => {
-        this.currentMonth += 1;
-        if (this.currentMonth > 11) {
-          this.currentMonth = 0;
-          this.currentYear += 1;
+        if (this.view === "day") {
+          this.currentMonth += 1;
+          if (this.currentMonth > 11) {
+            this.currentMonth = 0;
+            this.currentYear += 1;
+          }
+        } else if (this.view === "month") {
+          this.currentYear += 1; // 月份选择时，左右箭头切换年份
+        } else if (this.view === "year") {
+          this.currentYear += 12; // 年份选择时，左右箭头切换年份区间
         }
         this.updateCalendar();
       });
@@ -214,16 +229,16 @@ export default class Datepicker {
     yearMonthSelector.children(prevMonthBtn, this.yearMonthText, nextMonthBtn);
 
     // 创建星期头部
-    const weekHeader = h("div", `${cssPrefix}-datepicker-week-header`)
+    this.weekHeader = h("div", `${cssPrefix}-datepicker-week-header`)
       .css("display", "grid")
       .css("grid-template-columns", "repeat(7, 1fr)")
       .css("text-align", "center")
       .css("font-weight", "bold")
-      .css("margin-bottom", "5px");
+      .css("margin", "0 -2px 5px -2px");
 
     const weekdays = ["日", "一", "二", "三", "四", "五", "六"];
     weekdays.forEach((day) => {
-      weekHeader.child(h("div").html(day));
+      this.weekHeader.child(h("div").html(day));
     });
 
     // 创建日期网格
@@ -233,16 +248,54 @@ export default class Datepicker {
       .css("grid-gap", "5px")
       .css("text-align", "center");
 
-    calendarEl.children(yearMonthSelector, weekHeader, this.daysGrid);
+    calendarEl.children(yearMonthSelector, this.weekHeader, this.daysGrid);
 
     // 初始化日历
     this.updateCalendar();
+
+    // 绑定点击事件
+    this.yearMonthText.on("click", (e) => {
+      if (this.view === "day") {
+        // 点击"月"或"年"都能切换
+        if (e.target.classList.contains("dp-month")) {
+          this.view = "month";
+          this.updateCalendar();
+        } else if (e.target.classList.contains("dp-year")) {
+          this.view = "year";
+          this.updateCalendar();
+        }
+      } else if (this.view === "month") {
+        // 月份选择顶部的年份也能切换到年份选择
+        if (e.target.classList.contains("dp-year")) {
+          this.view = "year";
+          this.updateCalendar();
+        }
+      }
+      // 阻止冒泡，避免触发外部事件
+      e.stopPropagation();
+    });
 
     return calendarEl;
   }
 
   // 更新日历显示
   updateCalendar() {
+    // 控制星期栏显示
+    if (this.view === "day") {
+      this.weekHeader.css("color", "black");
+      this.renderDayView();
+    } else {
+      this.weekHeader.css("color", "white");
+      if (this.view === "month") {
+        this.renderMonthView();
+      } else if (this.view === "year") {
+        this.renderYearView();
+      }
+    }
+  }
+
+  // 日视图
+  renderDayView() {
     // 更新年月显示
     const monthNames = [
       "一月",
@@ -259,7 +312,7 @@ export default class Datepicker {
       "十二月",
     ];
     this.yearMonthText.html(
-      `${this.currentYear}年 ${monthNames[this.currentMonth]}`
+      `<span class="dp-year" style="cursor:pointer">${this.currentYear}年</span> <span class="dp-month" style="cursor:pointer">${monthNames[this.currentMonth]}</span>`
     );
 
     // 清空日期网格
@@ -299,13 +352,126 @@ export default class Datepicker {
       }
 
       // 点击日期
-      dayEl.on("click", () => {
+      dayEl.on("click", (e) => {
+        e.stopPropagation();
         this.value = new Date(this.currentYear, this.currentMonth, day);
         this.updateCalendar();
       });
 
       this.daysGrid.child(dayEl);
     }
+    this.daysGrid.css("grid-template-columns", "repeat(7, 1fr)");
+
+    // 绑定事件
+    const yearSpan = this.yearMonthText.el.querySelector(".dp-year");
+    const monthSpan = this.yearMonthText.el.querySelector(".dp-month");
+    if (yearSpan) {
+      yearSpan.onclick = (e) => {
+        e.stopPropagation();
+        this.view = "year";
+        this.updateCalendar();
+      };
+    }
+    if (monthSpan) {
+      monthSpan.onclick = (e) => {
+        e.stopPropagation();
+        this.view = "month";
+        this.updateCalendar();
+      };
+    }
+  }
+
+  // 月视图
+  renderMonthView() {
+    // 顶部只显示年
+    this.yearMonthText.html(
+      `<span class="dp-year" style="cursor:pointer">${this.currentYear}年</span>`
+    );
+    this.daysGrid.html("");
+    const monthNames = [
+      "一月",
+      "二月",
+      "三月",
+      "四月",
+      "五月",
+      "六月",
+      "七月",
+      "八月",
+      "九月",
+      "十月",
+      "十一月",
+      "十二月",
+    ];
+    // 取已选日期的年份和月份
+    const selectedYear = this.value
+      ? this.value.getFullYear()
+      : this.currentYear;
+    const selectedMonth = this.value
+      ? this.value.getMonth()
+      : this.currentMonth;
+    for (let i = 0; i < 12; i++) {
+      const monthEl = h("div", `${cssPrefix}-datepicker-month`)
+        .css("cursor", "pointer")
+        .css("padding", "10px 0")
+        .css("border-radius", "4px")
+        .html(monthNames[i])
+        .on("click", (e) => {
+          e.stopPropagation();
+          this.currentMonth = i;
+          this.view = "day";
+          this.updateCalendar();
+        });
+      // 高亮：当前视图年份等于已选年份，且月份等于已选月份
+      if (this.currentYear === selectedYear && i === selectedMonth) {
+        monthEl.css("background", "#4b89ff").css("color", "#fff");
+      }
+      this.daysGrid.child(monthEl);
+    }
+    this.daysGrid.css("grid-template-columns", "repeat(3, 1fr)");
+
+    // 顶部年份也加 stopPropagation
+    const yearSpanMonth = this.yearMonthText.el.querySelector(".dp-year");
+    if (yearSpanMonth) {
+      yearSpanMonth.onclick = (e) => {
+        e.stopPropagation();
+        this.view = "year";
+        this.updateCalendar();
+      };
+    }
+  }
+
+  // 年视图
+  renderYearView() {
+    // 计算年份区间
+    const base = Math.floor(this.currentYear / 12) * 12;
+    this.yearMonthText.html(
+      `<span class="dp-year-range" style="cursor:pointer">${base}年 - ${base + 11}年</span>`
+    );
+    this.daysGrid.html("");
+    // 取已选日期的年份
+    const selectedYear = this.value
+      ? this.value.getFullYear()
+      : this.currentYear;
+    for (let i = 0; i < 12; i++) {
+      const year = base + i;
+      const yearEl = h("div", `${cssPrefix}-datepicker-year`)
+        .css("cursor", "pointer")
+        .css("padding", "10px 0")
+        .css("border-radius", "4px")
+        .html(year)
+        .on("click", (e) => {
+          e.stopPropagation();
+          this.currentYear = year;
+          this.view = "month";
+          this.updateCalendar();
+        });
+      // 高亮：年份等于已选年份
+      if (year === selectedYear) {
+        yearEl.css("background", "#4b89ff").css("color", "#fff");
+      }
+      this.daysGrid.child(yearEl);
+    }
+    this.daysGrid.css("grid-template-columns", "repeat(3, 1fr)");
   }
 
   // 设置日期
@@ -380,16 +546,18 @@ export default class Datepicker {
 
   // 显示日期选择器
   show() {
+    this.view = "day"; // 每次打开都重置为日历视图
     this.setOffset(); // 默认居中显示
     this.el.show();
 
     // 绑定点击外部事件，但排除日期选择器内部元素
     bindClickoutside(this.el, () => {
-      if (this.el.visible()) {
+      if (this.el.el.style.display !== "none") {
         this.hide();
       }
     });
 
+    this.updateCalendar(); // 确保视图和布局刷新
     return this;
   }
 

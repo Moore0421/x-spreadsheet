@@ -6,7 +6,7 @@ export default class TreeEditor {
   constructor(options = {}) {
     this.options = options;
     this.width = options.width || 500;
-    this.height = options.height || 410;
+    this.height = options.height || 450;
     
     // 当前编辑的单元格信息
     this.currentCell = null;
@@ -54,10 +54,20 @@ export default class TreeEditor {
       .css('height', 'calc(100% - 110px)')
       .css('overflow', 'auto');
     
+    // 新增：提示词输入框
+    this.placeholderInput = h('input', `${cssPrefix}-tree-editor-placeholder`)
+      .css('width', '100%')
+      .css('margin-bottom', '8px')
+      .css('padding', '6px 8px')
+      .css('box-sizing', 'border-box')
+      .css('border', '1px solid #ccc')
+      .css('border-radius', '4px')
+      .attr('placeholder', '请输入提示词（如"点击选择"）');
+    
     // 创建树形数据输入区域
     this.treeDataTextarea = h('textarea', `${cssPrefix}-tree-editor-textarea`)
       .css('width', '100%')
-      .css('height', '98%')
+      .css('height', '88%')
       .css('resize', 'none')
       .css('padding', '8px')
       .css('box-sizing', 'border-box')
@@ -65,7 +75,8 @@ export default class TreeEditor {
       .css('border-radius', '4px')
       .attr('placeholder', '请输入JSON格式的树形数据，例如：\n[\n  {\n    "label": "一级选项1",\n    "value": "option1",\n    "children": [\n      {\n        "label": "二级选项1",\n        "value": "option1-1"\n      }\n    ]\n  }\n]');
     
-    this.content.child(this.treeDataTextarea);
+    // 把提示词输入框插入到内容区最前面
+    this.content.children(this.placeholderInput, this.treeDataTextarea);
     
     // 创建底部按钮区域
     this.footer = h('div', `${cssPrefix}-tree-editor-footer`)
@@ -136,6 +147,7 @@ export default class TreeEditor {
     }
     
     const treeData = this.getTreeData();
+    const placeholder = this.placeholderInput.val() || '';
     
     // 调用回调函数保存数据
     if (typeof this.change === 'function') {
@@ -143,7 +155,8 @@ export default class TreeEditor {
         ri: this.currentRi,
         ci: this.currentCi,
         cell: this.currentCell,
-        treeData: treeData
+        treeData: treeData,
+        placeholder: placeholder,
       });
     } else {
       console.error('未设置回调函数');
@@ -243,6 +256,13 @@ export default class TreeEditor {
       this.setTreeData(cell.treeData);
     } else {
       this.setTreeData([]);
+    }
+    
+    // 设置提示词
+    if (cell && typeof cell.text === 'string') {
+      this.placeholderInput.val(cell.text);
+    } else {
+      this.placeholderInput.val('');
     }
     
     return this;

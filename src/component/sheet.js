@@ -1444,24 +1444,12 @@ export default class Sheet {
       const TreeEditor = require('./tree-editor').default;
       this.treeEditor = new TreeEditor(options.treeEditor || {});
       this.treeEditor.change = (params) => {
-        const { ri, ci, treeData } = params;
+        const { ri, ci, treeData, placeholder } = params;
         // 更新单元格的treeData
         const cell = this.data.getCell(ri, ci) || {};
         cell.treeData = treeData;
-        
-        // 如果树形数据有标签，用它们生成一个简短的描述
-        let labelText = '点击选择';
-        if (treeData && treeData.length > 0) {
-          const labels = treeData.map(item => item.label).slice(0, 3);
-          if (labels.length > 0) {
-            labelText = labels.join(', ');
-            if (treeData.length > 3) {
-              labelText += '...';
-            }
-          }
-        }
-        // 更新单元格文本
-        cell.text = labelText;
+        // 更新单元格文本为提示词
+        cell.text = placeholder || '点击选择';
         // 确保单元格是树形类型
         cell.cellType = 'tree';
         // 更新到数据层
@@ -1598,7 +1586,6 @@ export default class Sheet {
           this.data.setCellProperty(ri, ci, 'selected', true);
           // 更新单元格文本
           this.data.setCellText(ri, ci, '已选择');
-          
           // 重新渲染表格
           this.table.render();
         };
