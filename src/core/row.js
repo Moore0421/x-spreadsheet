@@ -291,6 +291,7 @@ class Rows {
     });
     this._ = ndata;
     this.len += n;
+    this.onRowColChange && this.onRowColChange();
   }
 
   delete(sri, eri) {
@@ -318,6 +319,7 @@ class Rows {
     });
     this._ = ndata;
     this.len -= n;
+    this.onRowColChange && this.onRowColChange();
   }
 
   insertColumn(sci, n = 1) {
@@ -342,6 +344,7 @@ class Rows {
       });
       row.cells = rndata;
     });
+    this.onRowColChange && this.onRowColChange();
   }
 
   deleteColumn(sci, eci) {
@@ -368,6 +371,7 @@ class Rows {
       });
       row.cells = rndata;
     });
+    this.onRowColChange && this.onRowColChange();
   }
 
   // what: all | text | format | merge
@@ -399,6 +403,7 @@ class Rows {
         }
       }
     }
+    this.onRowColChange && this.onRowColChange();
   }
 
   maxCell() {
@@ -489,6 +494,88 @@ class Rows {
         if (row.id) r.id = row.id; // 从导入数据中恢复id
       }
     });
+  }
+
+  setDataList(range) {
+    // 记录数据列表区域
+    this.dataListRange = {
+      sri: range.sri,
+      sci: range.sci,
+      // 只到倒数第6行
+      eri: Math.max(this.len - 6, range.sri),
+      eci: this.data.cols.len - 1,
+    };
+    // 同步到 settings
+    this.data.settings.dataListRange = this.dataListRange;
+    // 设置 cellType
+    for (let ci = this.dataListRange.sci; ci <= this.dataListRange.eci; ci++) {
+      const firstCell = this.getCell(this.dataListRange.sri, ci);
+      const cellType = firstCell?.cellType || "text";
+      for (let ri = this.dataListRange.sri; ri <= this.dataListRange.eri; ri++) {
+        const cell = this.getCellOrNew(ri, ci);
+        cell.cellType = cellType;
+        if (ri === this.dataListRange.sri) cell.isDataListRiHeader = true;
+        if (ci === this.dataListRange.sci) cell.isDataListCiHeader = true;
+      }
+    }
+    this.data.render && this.data.render();
+  }
+
+  cancelDataList() {
+    const dataListRange = this.getDataListRange();
+    if (!dataListRange) return;
+    for (let ci = dataListRange.sci; ci <= dataListRange.eci; ci++) {
+      for (let ri = dataListRange.sri; ri <= dataListRange.eri; ri++) {
+        const cell = this.getCell(ri, ci);
+        if (cell) {
+          delete cell.cellType;
+          delete cell.isDataListRiHeader;
+          delete cell.isDataListCiHeader;
+        }
+      }
+    }
+    this.dataListRange = null;
+    this.data.settings.dataListRange = null;
+    this.data.render && this.data.render();
+  }
+
+  // 新增行/列时自动同步
+  onRowColChange() {
+    const dataListRange = this.getDataListRange();
+    if (!dataListRange) return;
+    // 扩展数据列表区域
+    dataListRange.eri = Math.max(this.len - 6, dataListRange.sri);
+    dataListRange.eci = this.data.cols.len - 1;
+    // 同步 cellType
+    for (let ci = dataListRange.sci; ci <= dataListRange.eci; ci++) {
+      const firstCell = this.getCellOrNew(dataListRange.sri, ci);
+      const cellType = firstCell?.cellType || "text";
+      for (let ri = dataListRange.sri; ri <= dataListRange.eri; ri++) {
+        const cell = this.getCellOrNew(ri, ci);
+        cell.cellType = cellType;
+      }
+    }
+  }
+
+  // 每次第一行cellType变更时，同步整列
+  syncDataListColumnType(ci, cellType) {
+    const dataListRange = this.getDataListRange();
+    console.log("syncDataListColumnType", ci, dataListRange);
+    if (!dataListRange) return;
+    if (ci < dataListRange.sci || ci > dataListRange.eci) return;
+    for (let ri = dataListRange.sri; ri <= dataListRange.eri; ri++) {
+      const cell = this.getCellOrNew(ri, ci);
+      cell.cellType = cellType;
+    }
+    this.data.render && this.data.render();
+  }
+
+  // 添加 getter 方法，确保总能拿到最新的 dataListRange
+  getDataListRange() {
+    // 优先使用自身的缓存，否则从 data.settings 或 data.sheetConfig.settings 中获取
+    return this.dataListRange || 
+           this.data?.settings?.dataListRange || 
+           this.data?.sheetConfig?.settings?.dataListRange;
   }
 }
 

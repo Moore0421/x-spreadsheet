@@ -644,11 +644,11 @@ class Draw {
 
     // 绘制指示器位置，右上角
     const indicatorSize = 8;
-    const indicatorX = x + width - indicatorSize - 2;
-    const indicatorY = y + 2;
+    const indicatorX = x + width - indicatorSize;
+    const indicatorY = y + 5;
 
     // 根据不同类型设置不同颜色
-    let color = "#3f51b5"; // 默认颜色
+    let color = "#ffffff"; // 默认颜色
 
     if (cellType === "date") {
       color = "#4caf50"; // 日期类型为绿色

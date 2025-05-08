@@ -63,6 +63,8 @@ export default {
     cellTypeDate: '日期选择器',
     cellTypeTree: '树形选择器',
     cellTypePopup: '弹窗选择器',
+    setDataList: '设置为数据列表',
+    cancelDataList: '取消数据列表',
   },
   print: {
     size: "纸张大小",

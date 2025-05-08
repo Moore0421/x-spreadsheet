@@ -713,23 +713,17 @@ function editorSet() {
   const { editor, data } = this;
   const selectedCell = data.getSelectedCell(); // 获取一次，避免重复调用
   
-  // Check if the selected cell has a custom type
-  if (selectedCell && selectedCell.cellType) {
-    return; // Don't show the default editor for custom types
-  }
-  
   // Existing editorSet logic
   if (editor.formulaCell) {
     return;
   }
 
-  if (data.settings.mode === "read") {
+  if (data.settings.mode === "preview" || data.settings.mode === "normal" || data.settings.mode === "enabled") {
     return;
   }
   
   // 在预览模式下检查单元格是否可编辑
-  // const cell = data.getSelectedCell(); // Use selectedCell obtained earlier
-  if ((data.settings.mode === "preview" || data.settings.mode === "normal" || data.settings.mode === "enabled") && selectedCell && selectedCell.editable === false) {
+  if (selectedCell && selectedCell.editable === false) {
     return;
   }
   
@@ -890,15 +884,12 @@ function insertDeleteRowColumn(type) {
     this.table.render();
   } else if (type === "cell-type-date") {
     data.setSelectedCellAttr("cellType", "date");
-    data.setSelectedCellAttr("text", new Date().toISOString().split("T")[0]);
     this.table.render();
   } else if (type === "cell-type-tree") {
     data.setSelectedCellAttr("cellType", "tree");
-    data.setSelectedCellAttr("text", "点击选择");
     this.table.render();
   } else if (type === "cell-type-popup") {
     data.setSelectedCellAttr("cellType", "popup");
-    data.setSelectedCellAttr("text", "点击打开");
     this.table.render();
   }
   clearClipboard.call(this);
@@ -1341,6 +1332,18 @@ function sheetInitEvents() {
       this.data?.clipboard?.clear();
     }
   });
+
+  this.on("context-menu-action", (params) => {
+    const { action: [type], range: { sri: ri, sci: ci } } = params;
+    if (/^cell-type-\w+/.test(type)) {
+      if (ri === undefined || ci === undefined || ri < 0 || ci < 0) return;
+      const cell = this.data.rows.getCell(ri, ci);
+      if (cell.isDataListRiHeader || ri === this.data.rows.dataListRange.sri) {
+        const cellType = type.split("-")[2]
+        this.data.rows.syncDataListColumnType(ci, cellType);
+      }
+    }
+  });
 }
 
 export default class Sheet {
@@ -1756,7 +1759,7 @@ export default class Sheet {
       return;
     }
     // 根据单元格类型处理不同的编辑方式
-    if (cell && cell.cellType && cell.cellType !== "none") {
+    if (cell && cell.cellType && cell.cellType !== "none" && cell.cellType !== "text") {
       // 选择单元格以确保位置正确
       this.selectCell(ri, ci);
       // 计算单元格位置信息

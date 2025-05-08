@@ -1874,6 +1874,14 @@ export default class DataProxy {
         this[property] = d[property];
       }
     });
+
+    // 处理 sheetConfig
+    if (d.sheetConfig && d.sheetConfig.settings && d.sheetConfig.settings.dataListRange) {
+      // 同步到 settings 和 rows
+      this.settings.dataListRange = d.sheetConfig.settings.dataListRange;
+      this.rows.dataListRange = d.sheetConfig.settings.dataListRange;
+    }
+
     return this;
   }
 

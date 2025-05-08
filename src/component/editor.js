@@ -400,6 +400,12 @@ export default class Editor {
     if (cell?.text?.length === 1) {
       inputEventHandler.call(this, { target: { value: text } });
     }
+
+    // 监听 cellType 变更
+    if (cell && cell.cellType && this.data.rows.dataListRange) {
+      const { ci } = this;
+      this.data.rows.syncDataListColumnType(ci);
+    }
   }
 
   setFormulaCell(cellRef) {

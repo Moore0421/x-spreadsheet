@@ -793,7 +793,7 @@ body {
   margin: 0 10px 0 0;
 }
 .x-spreadsheet-form-field {
-  display: block;
+  display: grid;
   vertical-align: middle;
   margin-left: 10px;
   margin-bottom: 10px;

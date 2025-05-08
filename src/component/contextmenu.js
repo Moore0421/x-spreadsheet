@@ -46,7 +46,10 @@ const menuItems = [
   { key: "divider" },
   { key: "set-row-id", title: tf("contextmenu.setRowId") },
   { key: "set-data-cell", title: tf("contextmenu.setDataCell") },
-  { key: "cancel-data-cell", title: tf("contextmenu.cancelDataCell") }
+  { key: "cancel-data-cell", title: tf("contextmenu.cancelDataCell") },
+  { key: "divider" },
+  { key: "set-data-list", title: tf("contextmenu.setDataList") },
+  { key: "cancel-data-list", title: tf("contextmenu.cancelDataList") }
 ];
 
 function buildSubMenuItems(items) {
@@ -61,8 +64,12 @@ function buildMenuItem(item) {
   const ele = h("div", `${cssPrefix}-item`)
     .on("click", () => {
       const range = this.sheet.selector.range;
-      if (item.key === "set-row-id") {
-        this.sheet.data.handleSetRowId();
+      if (item.key === "set-data-list") {
+        this.sheet.data.rows.setDataList(range);
+      } else if (item.key === "cancel-data-list") {
+        this.sheet.data.rows.cancelDataList();
+      } else if (item.key === "set-row-id") {
+        this.sheet.data.rows.handleSetRowId();
       } else {
         this.sheet?.trigger?.("context-menu-action", {
           action: [item.key],
@@ -170,6 +177,15 @@ function handleDynamicMenu() {
       }
     }
   });
+  const setDataListEl = this.menuItems.find(ele => ele.attr("data-key") === "set-data-list");
+  const cancelDataListEl = this.menuItems.find(ele => ele.attr("data-key") === "cancel-data-list");
+  if (this.sheet.data.settings.dataListRange) {
+    setDataListEl && setDataListEl.hide();
+    cancelDataListEl && cancelDataListEl.show();
+  } else {
+    setDataListEl && setDataListEl.show();
+    cancelDataListEl && cancelDataListEl.hide();
+  }
 }
 
 function buildMenu() {
