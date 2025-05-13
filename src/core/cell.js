@@ -331,6 +331,10 @@ const parserFormulaString = (
                 sheetName,
                 getCellMetaOrDefault
               );
+              const index = formulaCallStack[linkSheetName].findIndex(
+                (_cellRef) => _cellRef === cellRef
+              );
+              if (index > -1) formulaCallStack[linkSheetName].splice(index, 1);
               return flipSign ? referenceResult * -1 : referenceResult;
             }
           }
@@ -372,6 +376,10 @@ const parserFormulaString = (
                 sheetName,
                 getCellMetaOrDefault
               );
+              const index = formulaCallStack[sheetName].findIndex(
+                (_cellRef) => _cellRef === cellRef
+              );
+              if (index > -1) formulaCallStack[sheetName].splice(index, 1);
               return flipSign ? referenceResult * -1 : referenceResult;
             }
           } else {
