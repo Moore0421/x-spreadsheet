@@ -5,7 +5,7 @@ import { cssPrefix } from "../config";
 function inputMovePrev(evt) {
   evt.preventDefault();
   evt.stopPropagation();
-  const { filterItems } = this;
+  const { filterItems, el } = this;
   if (filterItems.length <= 0) return;
   if (this.itemIndex >= 0) filterItems[this.itemIndex].toggle();
   this.itemIndex -= 1;
@@ -13,12 +13,17 @@ function inputMovePrev(evt) {
     this.itemIndex = filterItems.length - 1;
   }
   filterItems[this.itemIndex].toggle();
+  if (!isElementInView(el?.el, filterItems[this.itemIndex].el))
+    el?.el?.scrollBy?.({
+      top: -120,
+      behavior: "smooth",
+    });
 }
 
 function inputMoveNext(evt) {
   evt.preventDefault();
   evt.stopPropagation();
-  const { filterItems } = this;
+  const { filterItems, el } = this;
   if (filterItems.length <= 0) return;
   if (this.itemIndex >= 0) filterItems[this.itemIndex].toggle();
   this.itemIndex += 1;
@@ -26,6 +31,11 @@ function inputMoveNext(evt) {
     this.itemIndex = 0;
   }
   filterItems[this.itemIndex].toggle();
+  if (!isElementInView(el?.el, filterItems[this.itemIndex].el))
+    el?.el?.scrollBy?.({
+      top: 120,
+      behavior: "smooth",
+    });
 }
 
 function inputEnter(evt) {
@@ -69,7 +79,10 @@ export default class MentionMenu {
     this.filterItems = [];
     this.items = [];
     this.trigger = menuConfig.trigger;
-    this.el = h("div", `${cssPrefix}-suggest`).css("width", width).hide();
+    this.el = h("div", `${cssPrefix}-suggest`)
+      .attr("tabindex", "0")
+      .css("width", width)
+      .hide();
     this.itemIndex = -1;
     this.itemClick = itemClick;
     this.getItemCall = menuConfig.itemCall;
@@ -120,6 +133,9 @@ export default class MentionMenu {
       items = items.map((it) => {
         let { value } = it;
         const item = h("div", `${cssPrefix}-item`)
+          .css("height", "unset")
+          .css("overflow-wrap", "break-word")
+          .css("border-bottom", "0.1px solid #EBEBEB")
           .child(value)
           .on("click.stop", () => {
             this.itemClick(it);
@@ -133,6 +149,8 @@ export default class MentionMenu {
       if (items.length <= 0) {
         this.hide();
         return;
+      } else if (items.length > 30) {
+        this.el.css("max-height", "400px").css("overflow", "auto");
       }
       const { el } = this;
       el.html("")

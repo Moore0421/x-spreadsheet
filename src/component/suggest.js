@@ -1,11 +1,12 @@
 import { h } from "./element";
 import { bindClickoutside, unbindClickoutside } from "./event";
 import { cssPrefix } from "../config";
+import { isElementInView } from "../utils";
 
 function inputMovePrev(evt) {
   evt.preventDefault();
   evt.stopPropagation();
-  const { filterItems } = this;
+  const { filterItems, el } = this;
   if (filterItems.length <= 0) return;
   if (this.itemIndex >= 0) filterItems[this.itemIndex].toggle();
   this.itemIndex -= 1;
@@ -13,11 +14,16 @@ function inputMovePrev(evt) {
     this.itemIndex = filterItems.length - 1;
   }
   filterItems[this.itemIndex].toggle();
+  if (!isElementInView(el?.el, filterItems[this.itemIndex].el))
+    el?.el?.scrollBy?.({
+      top: -120,
+      behavior: "smooth",
+    });
 }
 
 function inputMoveNext(evt) {
   evt.stopPropagation();
-  const { filterItems } = this;
+  const { filterItems, el } = this;
   if (filterItems.length <= 0) return;
   if (this.itemIndex >= 0) filterItems[this.itemIndex].toggle();
   this.itemIndex += 1;
@@ -25,6 +31,11 @@ function inputMoveNext(evt) {
     this.itemIndex = 0;
   }
   filterItems[this.itemIndex].toggle();
+  if (!isElementInView(el?.el, filterItems[this.itemIndex].el))
+    el?.el?.scrollBy?.({
+      top: 120,
+      behavior: "smooth",
+    });
 }
 
 function inputEnter(evt) {
@@ -78,6 +89,7 @@ export default class Suggest {
     this.filterItems = [];
     this.items = items;
     this.el = h("div", `${cssPrefix}-suggest`)
+      .attr("tabindex", "0")
       .css("width", width)
       .css("max-height", "400px")
       .css("overflow", "auto")
@@ -161,6 +173,9 @@ export default class Suggest {
         return item;
       } else {
         const item = h("div", `${cssPrefix}-item`)
+          .css("height", "unset")
+          .css("overflow-wrap", "break-word")
+          .css("border-bottom", "0.1px solid #EBEBEB")
           .child(title)
           .on("click.stop", () => {
             this.itemClick(it);

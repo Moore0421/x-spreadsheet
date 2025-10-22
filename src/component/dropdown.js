@@ -15,6 +15,7 @@ export default class Dropdown extends Element {
     }
     const childrenCount = children?.length;
     this.contentEl = h("div", `${cssPrefix}-dropdown-content`)
+      .attr("tabindex", "0")
       .css("width", width)
       .hide();
 

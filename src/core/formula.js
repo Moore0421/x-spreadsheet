@@ -15,7 +15,7 @@ import { numberCalc } from "./helper";
 import { SUPPORTED_FORMULAS } from "hot-formula-parser";
 
 /** @type {Formula[]} */
-const baseFormulas = SUPPORTED_FORMULAS.map((formula) => {
+const baseFormulas = [...SUPPORTED_FORMULAS, "TEXT"].map((formula) => {
   return {
     key: formula,
     title: formula,
