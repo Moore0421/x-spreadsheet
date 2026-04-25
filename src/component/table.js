@@ -1,6 +1,6 @@
 import { stringAt } from "../core/alphabet";
 import { getFontSizePxByPt } from "../core/font";
-import _cell from "../core/cell";
+import cellHelper from "../core/cell";
 import { formatm } from "../core/format";
 import { cssPrefix } from "../config";
 
@@ -53,7 +53,6 @@ export function renderCell(draw, data, rindex, cindex, yoffset = 0) {
   
   const nrindex = sortedRowMap && sortedRowMap[rindex] ? sortedRowMap[rindex] : rindex;
   const cell = data.getCell(nrindex, cindex);
-  const _cell = data.getCell(rindex, cindex);
   if (cell === null) return;
   let frozen = false;
   if (settings?.editable === false) {
@@ -70,7 +69,7 @@ export function renderCell(draw, data, rindex, cindex, yoffset = 0) {
   draw.rect(dbox, () => {
     let cellText = "";
     if (!data.settings.evalPaused && cell.f) {
-      cellText = _cell.render(
+      cellText = cellHelper.render(
         cell.f || "",
         (y, x, sheetName = data.name) => {
           if (!sheetName || sheetName.toLowerCase() === data.name.toLowerCase())

@@ -40,14 +40,14 @@ function pagerSizeChange(evt) {
   const ps = PAGER_SIZES[value];
   paper.w = inches2px(ps[1]);
   paper.h = inches2px(ps[2]);
-  this.preview();
+  this.preview(this.allData);
 }
 function pagerOrientationChange(evt) {
   const { paper } = this;
   const { value } = evt.target;
   const v = PAGER_ORIENTATIONS[value];
   paper.orientation = v;
-  this.preview();
+  this.preview(this.allData);
 }
 
 export default class Print {
@@ -118,72 +118,82 @@ export default class Print {
     this.data = data;
   }
 
-  preview() {
-    const { data, paper } = this;
+  preview(allData = null) {
+    this.allData = allData;
+    const { paper } = this;
     const { width, height, padding } = paper;
     const iwidth = width - padding * 2;
     const iheight = height - padding * 2;
-    const cr = data.contentRange();
-    const pages = parseInt(cr.h / iheight, 10) + 1;
-    const scale = iwidth / cr.w;
-    let left = padding;
-    const top = padding;
-    if (scale > 1) {
-      left += (iwidth - cr.w) / 2;
-    }
-    let ri = 0;
-    let yoffset = 0;
+
     this.contentEl.html("");
     this.canvases = [];
-    const mViewRange = {
-      sri: 0,
-      sci: 0,
-      eri: 0,
-      eci: 0,
-    };
-    for (let i = 0; i < pages; i += 1) {
-      let th = 0;
-      let yo = 0;
-      const wrap = h("div", `${cssPrefix}-canvas-card`);
-      const canvas = h("canvas", `${cssPrefix}-canvas`);
-      this.canvases.push(canvas.el);
-      const draw = new Draw(canvas.el, width, height);
-      // cell-content
-      draw.save();
-      draw.translate(left, top);
-      if (scale < 1) draw.scale(scale, scale);
-      for (; ri <= cr.eri; ri += 1) {
-        const rh = data.rows.getHeight(ri);
-        th += rh;
-        if (th < iheight) {
-          for (let ci = 0; ci <= cr.eci; ci += 1) {
-            renderCell(draw, data, ri, ci, yoffset);
-            mViewRange.eci = ci;
-          }
-        } else {
-          yo = -(th - rh);
-          break;
-        }
-      }
-      mViewRange.eri = ri;
-      draw.restore();
-      // merge-cell
-      draw.save();
-      draw.translate(left, top);
-      if (scale < 1) draw.scale(scale, scale);
-      const yof = yoffset;
-      data.eachMergesInView(mViewRange, ({ sri, sci }) => {
-        renderCell(draw, data, sri, sci, yof);
-      });
-      draw.restore();
 
-      mViewRange.sri = mViewRange.eri;
-      mViewRange.sci = mViewRange.eci;
-      yoffset += yo;
-      this.contentEl.child(
-        h("div", `${cssPrefix}-canvas-card-wraper`).child(wrap.child(canvas)),
-      );
-    }
+    // 判断是全表打印还是单表打印
+    const datasToPrint = allData ? allData : [this.data];
+
+    datasToPrint.forEach((data, sheetIndex) => {
+      const cr = data.contentRange();
+      const pages = parseInt(cr.h / iheight, 10) + 1;
+      const scale = iwidth / cr.w;
+      let left = padding;
+      const top = padding;
+      if (scale > 1) {
+        left += (iwidth - cr.w) / 2;
+      }
+      let ri = 0;
+      let yoffset = 0;
+      const mViewRange = {
+        sri: 0,
+        sci: 0,
+        eri: 0,
+        eci: 0,
+      };
+
+      for (let i = 0; i < pages; i += 1) {
+        let th = 0;
+        let yo = 0;
+        const wrap = h("div", `${cssPrefix}-canvas-card`);
+        const canvas = h("canvas", `${cssPrefix}-canvas`);
+        this.canvases.push(canvas.el);
+        const draw = new Draw(canvas.el, width, height);
+        // cell-content
+        draw.save();
+        draw.translate(left, top);
+        if (scale < 1) draw.scale(scale, scale);
+        for (; ri <= cr.eri; ri += 1) {
+          const rh = data.rows.getHeight(ri);
+          th += rh;
+          if (th < iheight) {
+            for (let ci = 0; ci <= cr.eci; ci += 1) {
+              renderCell(draw, data, ri, ci, yoffset);
+              mViewRange.eci = ci;
+            }
+          } else {
+            yo = -(th - rh);
+            break;
+          }
+        }
+        mViewRange.eri = ri;
+        draw.restore();
+        // merge-cell
+        draw.save();
+        draw.translate(left, top);
+        if (scale < 1) draw.scale(scale, scale);
+        const yof = yoffset;
+        data.eachMergesInView(mViewRange, ({ sri, sci }) => {
+          renderCell(draw, data, sri, sci, yof);
+        });
+        draw.restore();
+
+        mViewRange.sri = mViewRange.eri;
+        mViewRange.sci = mViewRange.eci;
+        yoffset += yo;
+        this.contentEl.child(
+          h("div", `${cssPrefix}-canvas-card-wraper`).child(wrap.child(canvas)),
+        );
+      }
+    });
+
     this.el.show();
   }
 

@@ -1,39 +1,374 @@
 <!doctype html>
 <html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width" />
-    <title><%= htmlWebpackPlugin.options.title %></title>
-    <!-- 程序 -->
-    <script src="./xspreadsheet.js"></script>
-    <!-- 中文 -->
-    <script src="./locale/zh-cn.js"></script>
-    <!-- 样式 -->
-    <link rel="stylesheet" href="./xspreadsheet.css" />
-    <!-- 数据 -->
-    <script src="./data.js"></script>
-    <!-- 加载 -->
-    <script src="./script.js"></script>
-    <script>
-      window.onload = async function () {
-        if (typeof x_spreadsheet !== "undefined") {
-          // 使用正确的语言代码 'zh-cn'
-          x_spreadsheet.locale("zh-cn");
-          await load();
-        } else {
-          console.error("x_spreadsheet not loaded");
-        }
-      };
-    </script>
-  </head>
-  <body>
-    <div id="x-spreadsheet-demo" style="height: 100vh"></div>
-    <div class="loading-overlay" id="loadingOverlay">
-      <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <p class="loading-text">文件较大，正在马不停蹄加载中...</p>
-        <p id="loading-num"></p>
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width" />
+  <title>
+    <%= htmlWebpackPlugin.options.title %>
+  </title>
+  <!-- 程序 -->
+  <script src="./xspreadsheet.js"></script>
+  <!-- 中文 -->
+  <script src="./locale/zh-cn.js"></script>
+  <!-- 样式 -->
+  <link rel="stylesheet" href="./xspreadsheet.css" />
+  <!-- 数据 -->
+  <script src="./data.js"></script>
+  <!-- 加载 -->
+  <script src="./script.js"></script>
+  <script>
+    window.onload = async function () {
+      if (typeof x_spreadsheet !== "undefined") {
+        // 使用正确的语言代码 'zh-cn'
+        x_spreadsheet.locale("zh-cn");
+        await loadReportList();
+      } else {
+        console.error("x_spreadsheet not loaded");
+      }
+    };
+  </script>
+  <style>
+    /* 顶栏样式 */
+    .top-bar {
+      display: none;
+      /* 默认隐藏 */
+      height: 44px;
+      background-color: #f8f9fa;
+      border-bottom: 1px solid #e9ecef;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      position: relative;
+    }
+
+    .top-bar-left {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .top-bar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .back-btn {
+      color: #606266;
+      text-decoration: none;
+      font-size: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      border: none;
+      background: none;
+      padding: 0;
+    }
+
+    .back-btn:hover {
+      color: #409eff;
+    }
+
+    .separator {
+      color: #dcdfe6;
+    }
+
+    .top-bar-title {
+      font-size: 16px;
+      font-weight: bold;
+      color: #333;
+      margin: 0;
+    }
+
+    .top-bar-btn {
+      padding: 6px 16px;
+      background-color: #fff;
+      color: #606266;
+      border: 1px solid #dcdfe6;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+
+    .top-bar-btn:hover {
+      color: #409eff;
+      border-color: #c6e2ff;
+      background-color: #ecf5ff;
+    }
+
+    .top-bar-btn.primary {
+      background-color: #409eff;
+      color: white;
+      border: none;
+    }
+
+    .top-bar-btn.primary:hover {
+      background-color: #66b1ff;
+      border: none;
+    }
+
+    /* 调整表格容器，使其不被顶栏遮挡 */
+    #x-spreadsheet-demo {
+      display: none;
+      /* 默认隐藏，通过 JS 控制显示 */
+      height: calc(100vh - 45px) !important;
+    }
+
+    /* 报表列表样式 */
+    #report-list-container {
+      padding: 20px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    .report-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background-color: #fff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .report-table th,
+    .report-table td {
+      border: 1px solid #ebeef5;
+      padding: 12px 15px;
+      text-align: left;
+    }
+
+    .report-table th {
+      background-color: #f5f7fa;
+      color: #909399;
+      font-weight: bold;
+    }
+
+    .report-table tr:hover {
+      background-color: #f5f7fa;
+    }
+
+    .action-btn {
+      padding: 5px 12px;
+      background-color: #67c23a;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background-color 0.2s;
+    }
+
+    .action-btn:hover {
+      background-color: #85ce61;
+    }
+
+    /* 新增报表弹窗样式 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .modal-content {
+      background: #fff;
+      padding: 25px;
+      border-radius: 8px;
+      width: 400px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .modal-title {
+      margin: 0;
+      font-size: 18px;
+      color: #333;
+    }
+
+    .modal-close {
+      cursor: pointer;
+      font-size: 20px;
+      color: #909399;
+      border: none;
+      background: none;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #606266;
+      font-size: 14px;
+    }
+
+    .form-control {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dcdfe6;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 14px;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: #409eff;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .modal-footer {
+      margin-top: 25px;
+      text-align: right;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      border: 1px solid #dcdfe6;
+      background: #fff;
+    }
+
+    .btn-primary {
+      background: #409eff;
+      color: #fff;
+      border-color: #409eff;
+      margin-left: 10px;
+    }
+
+    .btn-primary:hover {
+      background: #66b1ff;
+      border-color: #66b1ff;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 报表列表界面 -->
+  <div id="report-list-container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h2 style="color: #303133; margin: 0;">报表编报列表</h2>
+      <button id="create-report-btn" class="action-btn" style="display: none; background-color: #409eff;">新增报表</button>
+    </div>
+    <table class="report-table" id="report-table">
+      <thead>
+        <tr>
+          <th>报表名称</th>
+          <th>报表年份</th>
+          <th>报表月份</th>
+          <th>创建时间</th>
+          <th>更新时间</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="report-table-body">
+        <!-- 数据通过 JS 动态生成 -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 顶栏 -->
+  <div id="app-top-bar" class="top-bar">
+    <div class="top-bar-left">
+      <button id="back-to-list-btn" class="back-btn">
+        <svg viewBox="0 0 1024 1024" width="14" height="14" style="margin-right: 4px;">
+          <path
+            d="M724 218.3V141c0-6.7-7.7-10.4-12.9-6.3L260.3 486.8a31.86 31.86 0 0 0 0 50.3l450.8 352.1c5.3 4.1 12.9 0.4 12.9-6.3v-77.3c0-4.9-2.3-9.6-6.1-12.6l-360-281 360-281.1c3.8-3 6.1-7.7 6.1-12.6z"
+            fill="currentColor"></path>
+        </svg>
+        返回列表
+      </button>
+      <span class="separator">|</span>
+      <h2 id="dynamic-report-title" class="top-bar-title">报表名称</h2>
+    </div>
+    <div class="top-bar-right">
+      <button id="add-row-btn" class="top-bar-btn" style="display: none;">新增一行</button>
+      <button id="delete-row-btn" class="top-bar-btn" style="display: none;">删除该行</button>
+      <button id="save-pure-data-btn" class="top-bar-btn primary">保存</button>
+      <button id="submit-btn" class="top-bar-btn">提交</button>
+      <button id="verify-btn" class="top-bar-btn">校验</button>
+      <button id="withdraw-btn" class="top-bar-btn" style="display: none;">撤回</button>
+      <button id="export-btn" class="top-bar-btn">导出</button>
+      <button id="print-btn" class="top-bar-btn">打印</button>
+    </div>
+  </div>
+
+  <div id="app-top-bar-design" class="top-bar">
+    <div class="top-bar-left">
+      <h2 id="design-title" class="top-bar-title" style="transform: translateY(50%);">设计报表</h2>
+    </div>
+    <div class="top-bar-right">
+    </div>
+  </div>
+
+  <div id="x-spreadsheet-demo" style="height: 100vh"></div>
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <p class="loading-text">正在加载中......</p>
+      <p id="loading-num"></p>
+    </div>
+  </div>
+
+  <!-- 新增报表弹窗 -->
+  <div class="modal-overlay" id="createReportModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">新增报表</h3>
+        <button class="modal-close" id="closeModalBtn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="reportName">报表名称</label>
+          <input type="text" id="reportName" class="form-control" placeholder="请输入报表名称">
+        </div>
+        <div class="form-group" style="display: flex; gap: 10px;">
+          <div style="flex: 1;">
+            <label for="reportYear">年份</label>
+            <input type="number" id="reportYear" class="form-control" placeholder="如：2023">
+          </div>
+          <div style="flex: 1;">
+            <label for="reportMonth">月份</label>
+            <input type="number" id="reportMonth" class="form-control" placeholder="如：11" min="1" max="12">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="templateName">模板名称/ID</label>
+          <input type="text" id="templateName" class="form-control" placeholder="请输入模板标识">
+        </div>
+        <div class="form-group checkbox-group">
+          <input type="checkbox" id="inheritLastMonth" checked>
+          <label for="inheritLastMonth" style="margin: 0; cursor: pointer;">读取上个月数据</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn" id="cancelModalBtn">取消</button>
+        <button class="btn btn-primary" id="confirmCreateBtn">确认新增</button>
       </div>
     </div>
-  </body>
+  </div>
+</body>
+
 </html>

@@ -44,7 +44,9 @@ const menuItems = [
   { key: "cell-editable", title: tf("contextmenu.celleditable") },
   { key: "cell-non-editable", title: tf("contextmenu.cellnoneditable") },
   { key: "divider" },
+  { key: "set-sheet-id", title: tf("contextmenu.setSheetId") || "设置表ID" },
   { key: "set-row-id", title: tf("contextmenu.setRowId") },
+  { key: "set-cell-id", title: tf("contextmenu.setCellId") || "设置单元格ID" },
   { key: "set-data-cell", title: tf("contextmenu.setDataCell") },
   { key: "cancel-data-cell", title: tf("contextmenu.cancelDataCell") },
   { key: "divider" },
@@ -70,6 +72,10 @@ function buildMenuItem(item) {
         this.sheet.data.rows.cancelDataList();
       } else if (item.key === "set-row-id") {
         this.sheet.data.rows.handleSetRowId();
+      } else if (item.key === "set-sheet-id") {
+        this.sheet.data.handleSetSheetId();
+      } else if (item.key === "set-cell-id") {
+        this.sheet.data.handleSetCellId();
       } else {
         this.sheet?.trigger?.("context-menu-action", {
           action: [item.key],

@@ -6,11 +6,12 @@ export default class TreeSelector {
   constructor(options = {}) {
     this.options = options;
     this.items = options.items || [];
+    this.searchText = '';
     
     // 创建主容器
     this.el = h('div', `${cssPrefix}-tree-selector`)
       .css('width', '300px')
-      .css('max-height', '400px')
+      .css('height', '700px') // 将 max-height 改为固定 height，或者依然使用 max-height 并配合 flex
       .css('position', 'fixed')
       .css('background', '#fff')
       .css('box-shadow', '0 2px 12px rgba(0,0,0,0.15)')
@@ -19,8 +20,14 @@ export default class TreeSelector {
       .css('top', '50%')
       .css('left', '50%')
       .css('transform', 'translate(-50%, -50%)')
+      .css('display', 'flex')
+      .css('flex-direction', 'column')
       .hide();
     
+    // 创建固定的顶部区域（包含标题和搜索框）
+    this.fixedTop = h('div', `${cssPrefix}-tree-selector-fixed-top`)
+      .css('flex', '0 0 auto'); // 确保顶部区域不伸缩，固定高度
+
     // 创建标题栏
     this.header = h('div', `${cssPrefix}-tree-selector-header`)
       .css('padding', '10px')
@@ -28,7 +35,8 @@ export default class TreeSelector {
       .css('display', 'flex')
       .css('justify-content', 'space-between')
       .css('cursor', 'move')
-      .css('align-items', 'center');
+      .css('align-items', 'center')
+      .css('background', '#fff'); // 添加背景色，防止被内容穿透
     
     this.title = h('div', `${cssPrefix}-tree-selector-title`)
       .css('font-weight', 'bold')
@@ -42,18 +50,45 @@ export default class TreeSelector {
     
     this.header.children(this.title, this.closeBtn);
     
-    // 创建内容区域
+    // 创建搜索框区域
+    this.searchWrapper = h('div', `${cssPrefix}-tree-selector-search-wrapper`)
+      .css('padding', '10px')
+      .css('border-bottom', '1px solid #e0e0e0')
+      .css('background', '#fff'); // 添加背景色
+
+    this.searchInput = h('input', `${cssPrefix}-tree-selector-search`)
+      .attr('type', 'text')
+      .attr('placeholder', '搜索...')
+      .css('width', '100%')
+      .css('box-sizing', 'border-box')
+      .css('padding', '6px 10px')
+      .css('border', '1px solid #dcdfe6')
+      .css('border-radius', '4px')
+      .css('outline', 'none')
+      .on('input', (e) => {
+        this.searchText = e.target.value.trim().toLowerCase();
+        this.renderTree();
+      });
+
+    this.searchWrapper.child(this.searchInput);
+    
+    // 将标题和搜索框加入到固定顶部容器
+    this.fixedTop.children(this.header, this.searchWrapper);
+
+    // 创建内容区域（可滚动）
     this.content = h('div', `${cssPrefix}-tree-selector-content`)
       .css('padding', '10px')
-      .css('overflow', 'auto');
+      .css('overflow-y', 'auto')
+      .css('flex', '1 1 auto'); // 让内容区域自适应剩余空间并可滚动
     
     // 创建树形结构容器
     this.tree = h('ul', `${cssPrefix}-tree-list`)
       .css('list-style', 'none')
-      .css('padding-left', '0');
+      .css('padding-left', '0')
+      .css('margin', '0');
     
     this.content.child(this.tree);
-    this.el.children(this.header, this.content);
+    this.el.children(this.fixedTop, this.content);
     
     // 绑定点击外部事件
     bindClickoutside(this.el, () => {
@@ -120,7 +155,32 @@ export default class TreeSelector {
   // 渲染树形结构
   renderTree() {
     const buildTreeNode = (items) => {
-      return items.map((item) => {
+      let hasVisibleNode = false;
+      const elements = [];
+
+      items.forEach((item) => {
+        // 如果有搜索词，判断当前节点或其子节点是否匹配
+        let isMatch = true;
+        let childrenElements = [];
+        let hasVisibleChild = false;
+        
+        if (item.children && item.children.length > 0) {
+          const result = buildTreeNode(item.children);
+          childrenElements = result.elements;
+          hasVisibleChild = result.hasVisibleNode;
+        }
+
+        if (this.searchText) {
+          const matchLabel = item.label && item.label.toLowerCase().includes(this.searchText);
+          isMatch = matchLabel || hasVisibleChild;
+        }
+
+        if (!isMatch) {
+          return;
+        }
+        
+        hasVisibleNode = true;
+
         const itemEl = h('li', `${cssPrefix}-tree-item`)
           .css('padding', '0')
           .css('cursor', 'pointer')
@@ -144,8 +204,12 @@ export default class TreeSelector {
         let subList = null;
         
         if (item.children && item.children.length > 0) {
+          // 如果正在搜索且匹配到了子节点，或者没有搜索，则根据原来的逻辑判断
+          // 搜索状态下默认展开所有匹配的父节点
+          const isExpanded = this.searchText ? true : false;
+
           toggleEl = h('span', `${cssPrefix}-tree-item-toggle`)
-            .html('▶')
+            .html(isExpanded ? '▼' : '▶')
             .css('margin-right', '5px')
             .css('cursor', 'pointer')
             .css('display', 'inline-flex')
@@ -171,8 +235,15 @@ export default class TreeSelector {
           itemRow.child(spacer);
         }
         
+        // 搜索关键词高亮
+        let labelHtml = item.label;
+        if (this.searchText && item.label && item.label.toLowerCase().includes(this.searchText)) {
+          const regex = new RegExp(`(${this.searchText})`, 'gi');
+          labelHtml = item.label.replace(regex, '<span style="color: #409eff; font-weight: bold;">$1</span>');
+        }
+
         const labelEl = h('span', `${cssPrefix}-tree-item-label`)
-          .html(item.label)
+          .html(labelHtml)
           .css('flex', '1')
           .css('font-size', '14px')
           .css('cursor', 'pointer')
@@ -194,20 +265,36 @@ export default class TreeSelector {
         if (item.children && item.children.length > 0) {
           subList = h('ul', `${cssPrefix}-tree-sublist`)
             .css('padding-left', '20px')
-            .css('margin', '0')
-            .hide();
+            .css('margin', '0');
           
-          subList.children(...buildTreeNode(item.children));
+          if (!this.searchText) {
+             subList.hide();
+          }
+          
+          subList.children(...childrenElements);
           itemEl.child(subList);
         }
         
-        return itemEl;
+        elements.push(itemEl);
       });
+
+      return { elements, hasVisibleNode };
     };
     
     this.tree.html('');
     if (this.items && this.items.length > 0) {
-      this.tree.children(...buildTreeNode(this.items));
+      const result = buildTreeNode(this.items);
+      if (result.elements.length > 0) {
+        this.tree.children(...result.elements);
+      } else {
+        const emptyTip = h('div', `${cssPrefix}-tree-empty`)
+          .css('padding', '20px')
+          .css('text-align', 'center')
+          .css('color', '#909399')
+          .css('font-size', '14px')
+          .html('无匹配数据');
+        this.tree.child(emptyTip);
+      }
     }
   }
   
@@ -225,7 +312,12 @@ export default class TreeSelector {
   
   // 显示树形选择器
   show() {
-    this.el.show();
+    // 每次打开时清空搜索框内容
+    this.searchText = '';
+    this.searchInput.val('');
+    this.renderTree();
+    
+    this.el.css('display', 'flex');
     return this;
   }
   

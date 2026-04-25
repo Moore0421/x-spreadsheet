@@ -35,6 +35,8 @@ import { getFontSizePxByPt } from "./font";
 import { getDrawBox } from "../component/table";
 import { npx } from "../canvas/draw";
 import RowIdModal from "../component/toolbar/setting_row_id";
+import SheetIdModal from "../component/toolbar/setting_sheet_id";
+import CellIdModal from "../component/toolbar/setting_cell_id";
 import { evaluateDynamicExpression } from "./cell";
 
 // private methods
@@ -1870,6 +1872,8 @@ export default class DataProxy {
         this.freeze = [y, x];
       } else if (property === "autofilter") {
         this.autoFilter.setData(d[property]);
+      } else if (property === "sheetPreId") {
+        this.sheetPreId = d[property];
       } else if (d[property] !== undefined) {
         this[property] = d[property];
       }
@@ -1935,6 +1939,7 @@ export default class DataProxy {
       autofilter: autoFilter.getData(),
       sheetConfig: sheetConfig.getData(),
       sheetId,
+      sheetPreId: this.sheetPreId,
     };
   }
 
@@ -2069,6 +2074,51 @@ export default class DataProxy {
         this.setRowId(sri, newId);
       }
     }, currentId); // 传入当前ID作为默认值
+  }
+
+  setSheetId(id) {
+    this.changeData(() => {
+      this.sheetPreId = id;
+    });
+  }
+
+  getSheetId() {
+    return this.sheetPreId;
+  }
+
+  handleSetSheetId() {
+    const currentId = this.getSheetId() || "";
+
+    const modal = new SheetIdModal();
+    modal.show((newId) => {
+      if (newId !== null && newId !== "") {
+        this.setSheetId(newId);
+      }
+    }, currentId);
+  }
+
+  setCellId(ri, ci, id) {
+    this.changeData(() => {
+      this.rows.setCellProperty(ri, ci, "id", id);
+    });
+  }
+
+  getCellId(ri, ci) {
+    const cell = this.getCell(ri, ci);
+    return cell ? cell.id : null;
+  }
+
+  handleSetCellId() {
+    const { selector } = this;
+    const { sri, sci } = selector.range;
+    const currentId = this.getCellId(sri, sci) || "";
+
+    const modal = new CellIdModal();
+    modal.show((newId) => {
+      if (newId !== null && newId !== "") {
+        this.setCellId(sri, sci, newId);
+      }
+    }, currentId);
   }
 
   // 检查单元格是否可编辑

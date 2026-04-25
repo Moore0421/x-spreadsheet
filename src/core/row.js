@@ -289,6 +289,45 @@ class Rows {
       }
       ndata[nri] = row;
     });
+
+    // 复制上一行的格式和特殊属性
+    if (sri > 0 && ndata[sri - 1]) {
+      const prevRow = ndata[sri - 1];
+      for (let i = 0; i < n; i++) {
+        const newRowIndex = sri + i;
+        const newRowCells = {};
+        
+        if (prevRow.cells) {
+          Object.keys(prevRow.cells).forEach(ci => {
+            const prevCell = prevRow.cells[ci];
+            const newCell = {};
+            
+            // 复制样式
+            if (prevCell.style !== undefined) newCell.style = prevCell.style;
+            
+            // 复制数据单元格属性
+            if (prevCell.isDataCell !== undefined) newCell.isDataCell = prevCell.isDataCell;
+            if (prevCell.editable !== undefined) newCell.editable = prevCell.editable;
+            
+            // 复制数据列表相关属性
+            if (prevCell.cellType !== undefined) newCell.cellType = prevCell.cellType;
+            // 注意：不要复制 isDataListRiHeader，因为它只属于第一行
+            
+            if (Object.keys(newCell).length > 0) {
+              newRowCells[ci] = newCell;
+            }
+          });
+        }
+        
+        const newRowObj = Object.keys(newRowCells).length > 0 ? { cells: newRowCells } : {};
+        // 复制行高
+        if (prevRow.height !== undefined) {
+          newRowObj.height = prevRow.height;
+        }
+        ndata[newRowIndex] = newRowObj;
+      }
+    }
+
     this._ = ndata;
     this.len += n;
     this.onRowColChange && this.onRowColChange();
@@ -546,10 +585,13 @@ class Rows {
     // 扩展数据列表区域
     dataListRange.eri = Math.max(this.len - 6, dataListRange.sri);
     dataListRange.eci = this.data.cols.len - 1;
-    // 同步 cellType
+    // 只同步 cellType，不再强制同步 isDataCell 和 editable，
+    // 因为这会覆盖掉下方非数据区域的设置。
+    // insert() 方法已经处理了新行对上一行属性的继承。
     for (let ci = dataListRange.sci; ci <= dataListRange.eci; ci++) {
       const firstCell = this.getCellOrNew(dataListRange.sri, ci);
       const cellType = firstCell?.cellType || "text";
+      
       for (let ri = dataListRange.sri; ri <= dataListRange.eri; ri++) {
         const cell = this.getCellOrNew(ri, ci);
         cell.cellType = cellType;

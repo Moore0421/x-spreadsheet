@@ -61,6 +61,9 @@ const getStylingForClass = (styleTag, className) => {
 
 const parseCssToXDataStyles = (styleString, cellType) => {
   const parsedStyles = {};
+  if (typeof styleString !== 'string') {
+    return { parsedStyles, sheetConfig: { gridLine: false } };
+  }
   // By default numbers are right aligned.
   if (cellType === "n") parsedStyles.align = "right";
   if (styleString) {

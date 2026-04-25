@@ -205,11 +205,16 @@ const ExcelExport = async function (datas) {
                 const cellRef = `${getExcelColName(startCell.col)}${startCell.row};`;
                 const targetCell = worksheet.getCell(cellRef);
                 // 确保正确设置值
-                if (cellValue.startsWith("=")) {
-                  targetCell.value = { formula: cellValue.substring(1) };
+                if (cellValue !== null && cellValue !== undefined) {
+                  const textStr = String(cellValue);
+                  if (textStr.startsWith("=")) {
+                    targetCell.value = { formula: textStr.substring(1) };
+                  } else {
+                    const numValue = Number(textStr);
+                    targetCell.value = isNaN(numValue) ? textStr : numValue;
+                  }
                 } else {
-                  const numValue = Number(cellValue);
-                  targetCell.value = isNaN(numValue) ? cellValue : numValue;
+                  targetCell.value = null;
                 }
                 // 设置样式
                 targetCell.alignment = {
@@ -224,22 +229,21 @@ const ExcelExport = async function (datas) {
               const excelCell = excelRow.getCell(parseInt(colIndex) + 1);
 
               // 设置值
-              if (cell.text !== undefined) {
-                if (cell.text.startsWith("=")) {
-                  excelCell.value = { formula: cell.text.substring(1) };
+              if (cell.text !== undefined && cell.text !== null) {
+                const textStr = String(cell.text);
+                if (textStr.startsWith("=")) {
+                  excelCell.value = { formula: textStr.substring(1) };
                 } else {
                   // 处理普通文本
-                  if (
-                    cell.text === "" ||
-                    cell.text === null ||
-                    cell.text === undefined
-                  ) {
+                  if (textStr === "") {
                     excelCell.value = null;
                   } else {
-                    const numValue = Number(cell.text);
-                    excelCell.value = isNaN(numValue) ? cell.text : numValue;
+                    const numValue = Number(textStr);
+                    excelCell.value = isNaN(numValue) ? textStr : numValue;
                   }
                 }
+              } else if (cell.text === null) {
+                excelCell.value = null;
               }
 
               // 设置样式

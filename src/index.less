@@ -897,7 +897,7 @@ body {
   position: absolute;
   left: 0;
   z-index: 10;
-  width: auto;
+  width: 250px;
 }
 
 .@{css-prefix}-buttons {
@@ -1569,42 +1569,6 @@ form fieldset {
   
 }
 
-// 树形选择器样式
-.x-spreadsheet-tree-selector {
-  position: absolute;
-  background: #fff;
-  border: 1px solid #ddd;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-  min-width: 150px;
-  max-height: 300px;
-  overflow: auto;
-  padding: 5px 0;
-}
-
-.x-spreadsheet-tree-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.x-spreadsheet-tree-item {
-  padding: 5px 10px;
-  cursor: pointer;
-  position: relative;
-  
-  > span {
-    display: block;
-    padding-left: 10px;
-  }
-}
-
-.x-spreadsheet-tree-sublist {
-  margin: 0;
-  padding: 0 0 0 15px;
-  list-style: none;
-}
-
 // 弹窗样式
 .x-spreadsheet-popup-mask {
   position: fixed;
@@ -1693,7 +1657,7 @@ form fieldset {
   border: 1px solid #e0e0e0;
   border-radius: 4px;
   width: 200px;
-  max-height: 300px;
+  display: flex;
   overflow: auto;
   z-index: 10;
 

@@ -69,9 +69,9 @@ function mentionMenuSearch(text) {
 function inputEventHandler(evt) {
   const v = evt.target.value;
   const { cell, ri, ci, data } = this;
-  
-  // 如果单元格不可编辑且不是设计模式，则阻止输入
-  if (cell && cell.editable === false && data.settings?.mode !== 'design') {
+
+   // 在 enabled 模式下，只有明确设置了 editable 为 true 的单元格才可编辑
+  if (data.settings?.mode === 'enabled' && (!cell || cell.editable !== true) || data.settings?.mode === 'preview') {
     return;
   }
   
@@ -355,9 +355,10 @@ export default class Editor {
   setCell(cell, validator) {
     // 检查是否在预览模式且单元格不可编辑
     const { data } = this;
-    if ((data.settings.mode === 'preview' || data.settings.mode === 'normal' || data.settings.mode === 'read') && cell && cell.editable === false) {
+    // 在 enabled 模式下，只有明确设置了 editable 为 true 的单元格才可编辑
+    if (data.settings.mode === 'enabled' && (!cell || cell.editable !== true) || data.settings.mode === 'preview') {
       return;
-    }
+    } 
 
     const { el, textEl, textlineEl } = this;
     

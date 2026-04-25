@@ -43,7 +43,7 @@ function debounce(func, wait, immediate = false) {
   let timeout;
   return function executedFunction(...args) {
     const context = this;
-    const later = function() {
+    const later = function () {
       timeout = null;
       if (!immediate) func.apply(context, args);
     };
@@ -336,7 +336,7 @@ function clearClipboard() {
 
 function copy(evt) {
   const { data, selector } = this;
-  if (data.settings.mode === "read" || data.settings.mode === "preview" || data.settings.mode === "enabled") return;
+  if (data.settings.mode === "read" || data.settings.mode === "preview") return;
   data.copy();
   data.copyToSystemClipboard(evt);
   const copiedCellRange = selector.range;
@@ -346,7 +346,7 @@ function copy(evt) {
 
 function cut() {
   const { data, selector } = this;
-  if (data.settings.mode === "read" || data.settings.mode === "preview" || data.settings.mode === "enabled") return;
+  if (data.settings.mode === "read" || data.settings.mode === "preview") return;
   data.cut();
   const cutCellRange = selector.range;
   this.trigger("cut-clipboard", cutCellRange);
@@ -409,41 +409,41 @@ function overlayerMousedown(evt) {
   const cellRect = data.getCellRectByXY(offsetX, offsetY);
   const { left, top, width, height } = cellRect;
   let { ri, ci } = cellRect;
-  
+
   // 行标题区域点击 (ri >= 0 && ci === -1)
   if (ri >= 0 && ci === -1) {
     // 直接设置选择范围为整行，跳过标准选择流程，避免合并单元格影响
     const { cols } = data;
     const lastColIndex = cols.len - 1;
-    
+
     // 初始化选择范围
     selector.range.sri = ri;
     selector.range.eri = ri;
     selector.range.sci = 0;
     selector.range.eci = lastColIndex;
-    
+
     // 更新选择器索引
     selector.indexes = [ri, 0];
     selector.moveIndexes = [ri, lastColIndex];
-    
+
     // 强制渲染选择器
     selector.resetAreaOffset();
     table.render();
-    
+
     this.trigger("cells-selected", null, selector.range);
-    
+
     // 标记当前正在进行行选择模式
     const initialRowIndex = ri;
-    
+
     // 缓存上一次的选择范围，用于判断是否需要重新渲染
     let lastSri = ri;
     let lastEri = ri;
-    
+
     // 使用节流函数限制更新频率
-    const updateSelection = throttle(function(targetRowIndex) {
+    const updateSelection = throttle(function (targetRowIndex) {
       // 只有当选择范围发生变化时才更新
       let newSri, newEri;
-      
+
       if (targetRowIndex >= initialRowIndex) {
         // 向下拖动
         newSri = initialRowIndex;
@@ -453,30 +453,30 @@ function overlayerMousedown(evt) {
         newSri = targetRowIndex;
         newEri = initialRowIndex;
       }
-      
+
       // 如果选择范围没有变化，则不更新
       if (newSri === lastSri && newEri === lastEri) {
         return;
       }
-      
+
       // 更新缓存的范围
       lastSri = newSri;
       lastEri = newEri;
-      
+
       // 更新选择器范围
       selector.range.sri = newSri;
       selector.range.eri = newEri;
       selector.range.sci = 0;
       selector.range.eci = lastColIndex;
-      
+
       // 更新选择器索引
       selector.moveIndexes = [targetRowIndex, lastColIndex];
-      
+
       // 强制渲染选择器
       selector.resetAreaOffset();
       table.render();
     }, 30); // 30ms的节流间隔
-    
+
     // 鼠标移动处理，支持多行选择
     mouseMoveUp(
       window,
@@ -484,7 +484,7 @@ function overlayerMousedown(evt) {
         // 获取当前鼠标位置下的单元格
         const rect = data.getCellRectByXY(e.offsetX, e.offsetY);
         let targetRowIndex = rect.ri;
-        
+
         // 如果鼠标移出表格区域或在无效位置，尝试估算最近的行
         if (targetRowIndex < 0) {
           // 根据鼠标Y坐标估算行索引
@@ -497,7 +497,7 @@ function overlayerMousedown(evt) {
             targetRowIndex = Math.min(lastVisibleRow, data.rows.len - 1);
           }
         }
-        
+
         // 使用节流函数更新选择范围
         if (targetRowIndex >= 0) {
           updateSelection(targetRowIndex);
@@ -510,41 +510,41 @@ function overlayerMousedown(evt) {
     );
     return;
   }
-  
+
   // 列标题区域点击 (ri === -1 && ci >= 0)
   if (ri === -1 && ci >= 0) {
     // 直接设置选择范围为整列，跳过标准选择流程，避免合并单元格影响
     const { rows } = data;
     const lastRowIndex = rows.len - 1;
-    
+
     // 初始化选择范围
     selector.range.sri = 0;
     selector.range.eri = lastRowIndex;
     selector.range.sci = ci;
     selector.range.eci = ci;
-    
+
     // 更新选择器索引
     selector.indexes = [0, ci];
     selector.moveIndexes = [lastRowIndex, ci];
-    
+
     // 强制渲染选择器
     selector.resetAreaOffset();
     table.render();
-    
+
     this.trigger("cells-selected", null, selector.range);
-    
+
     // 标记当前正在进行列选择模式
     const initialColIndex = ci;
-    
+
     // 缓存上一次的选择范围，用于判断是否需要重新渲染
     let lastSci = ci;
     let lastEci = ci;
-    
+
     // 使用节流函数限制更新频率
-    const updateSelection = throttle(function(targetColIndex) {
+    const updateSelection = throttle(function (targetColIndex) {
       // 只有当选择范围发生变化时才更新
       let newSci, newEci;
-      
+
       if (targetColIndex >= initialColIndex) {
         // 向右拖动
         newSci = initialColIndex;
@@ -554,30 +554,30 @@ function overlayerMousedown(evt) {
         newSci = targetColIndex;
         newEci = initialColIndex;
       }
-      
+
       // 如果选择范围没有变化，则不更新
       if (newSci === lastSci && newEci === lastEci) {
         return;
       }
-      
+
       // 更新缓存的范围
       lastSci = newSci;
       lastEci = newEci;
-      
+
       // 更新选择器范围
       selector.range.sci = newSci;
       selector.range.eci = newEci;
       selector.range.sri = 0;
       selector.range.eri = lastRowIndex;
-      
+
       // 更新选择器索引
       selector.moveIndexes = [lastRowIndex, targetColIndex];
-      
+
       // 强制渲染选择器
       selector.resetAreaOffset();
       table.render();
     }, 30); // 30ms的节流间隔
-    
+
     // 鼠标移动处理，支持多列选择
     mouseMoveUp(
       window,
@@ -585,7 +585,7 @@ function overlayerMousedown(evt) {
         // 获取当前鼠标位置下的单元格
         const rect = data.getCellRectByXY(e.offsetX, e.offsetY);
         let targetColIndex = rect.ci;
-        
+
         // 如果鼠标移出表格区域或在无效位置，尝试估算最近的列
         if (targetColIndex < 0) {
           // 根据鼠标X坐标估算列索引
@@ -598,7 +598,7 @@ function overlayerMousedown(evt) {
             targetColIndex = Math.min(lastVisibleCol, data.cols.len - 1);
           }
         }
-        
+
         // 使用节流函数更新选择范围
         if (targetColIndex >= 0) {
           updateSelection(targetColIndex);
@@ -611,32 +611,32 @@ function overlayerMousedown(evt) {
     );
     return;
   }
-  
+
   // 左上角点击 (ri === -1 && ci === -1)
   if (ri === -1 && ci === -1) {
     // 直接设置选择范围为整个表格，跳过标准选择流程，避免合并单元格影响
     const { rows, cols } = data;
     const lastRowIndex = rows.len - 1;
     const lastColIndex = cols.len - 1;
-    
+
     // 设置选择范围
     selector.range.sri = 0;
     selector.range.eri = lastRowIndex;
     selector.range.sci = 0;
     selector.range.eci = lastColIndex;
-    
+
     // 更新选择器索引
     selector.indexes = [0, 0];
     selector.moveIndexes = [lastRowIndex, lastColIndex];
-    
+
     // 强制渲染选择器
     selector.resetAreaOffset();
     table.render();
-    
+
     this.trigger("cells-selected", null, selector.range);
     return;
   }
-  
+
   // sort or filter
   const { autoFilter } = data;
   if (autoFilter.includes(ri, ci)) {
@@ -712,29 +712,29 @@ function editorSetOffset() {
 function editorSet() {
   const { editor, data } = this;
   const selectedCell = data.getSelectedCell(); // 获取一次，避免重复调用
-  
+
   // Existing editorSet logic
   if (editor.formulaCell) {
     return;
   }
 
-  if (data.settings.mode === "preview" || data.settings.mode === "normal" || data.settings.mode === "enabled") {
+  if (data.settings.mode === "preview" || data.settings.mode === "normal") {
     return;
   }
-  
+
   // 在预览模式下检查单元格是否可编辑
   if (selectedCell && selectedCell.editable === false) {
     return;
   }
-  
+
   editorSetOffset.call(this);
-  
+
   // 如果cell为null，我们需要创建一个新的单元格
   if (!selectedCell) {
     const { ri, ci } = data.selector;
     data.rows.getCellOrNew(ri, ci);
   }
-  
+
   editor.setCell(data.getSelectedCell() || {}, data.getSelectedValidator());
   clearClipboard.call(this);
 }
@@ -845,8 +845,8 @@ function dataSetCellText(text, state = "finished") {
 
 function insertDeleteRowColumn(type) {
   const { data } = this;
-  if (data.settings.mode === "read" || data.settings.mode === "preview" || data.settings.mode === "enabled") return;
-  
+  if (data.settings.mode === "read" || data.settings.mode === "preview") return;
+
   if (type === "insert-row") {
     data.insert("row");
   } else if (type === "delete-row") {
@@ -1294,10 +1294,10 @@ function sheetInitEvents() {
         const { data } = this;
         const cell = data.getSelectedCell();
         const mode = data.settings?.mode;
-        if ((mode === "preview" || mode === "normal" || mode === "read" || mode === "enabled") && cell && cell.editable === false) {
+        // 在 enabled 模式下，只有明确设置了 editable 为 true 的单元格才可编辑
+        if ((mode === "enabled" && (!cell || cell.editable !== true)) || mode === "preview") {
           return;
         }
-        
         dataSetCellText.call(this, evt.key, "input");
         editorSet.call(this);
       } else if (keyCode === 113) {
@@ -1306,10 +1306,9 @@ function sheetInitEvents() {
         const { data } = this;
         const cell = data.getSelectedCell();
         const mode = data.settings?.mode;
-        if (mode === "preview" || mode === "normal" || mode === "read" || mode === "enabled") {
-          if (cell && cell.editable === false) {
-            return;
-          }
+        // 在 enabled 模式下，只有明确设置了 editable 为 true 的单元格才可编辑
+        if ((mode === "enabled" && (!cell || cell.editable !== true)) || mode === "preview") {
+          return;
         }
         editorSet.call(this);
       }
@@ -1338,7 +1337,8 @@ function sheetInitEvents() {
     if (/^cell-type-\w+/.test(type)) {
       if (ri === undefined || ci === undefined || ri < 0 || ci < 0) return;
       const cell = this.data.rows.getCell(ri, ci);
-      if (cell.isDataListRiHeader || ri === this.data.rows.dataListRange.sri) {
+      // 添加 dataListRange 的空值保护
+      if (cell.isDataListRiHeader || (this.data.rows.dataListRange && ri === this.data.rows.dataListRange.sri)) {
         const cellType = type.split("-")[2]
         this.data.rows.syncDataListColumnType(ci, cellType);
       }
@@ -1395,11 +1395,11 @@ export default class Sheet {
     this.sortFilter = new SortFilter();
     this.comment = new Comment(this, () => this.getRect());
     this.hoverTimer = null;
-    
+
     // 导入自定义组件
     const TreeSelector = options.components?.TreeSelector || this.options.TreeSelector;
     const PopupDialog = options.components?.PopupDialog || this.options.PopupDialog;
-    
+
     // 导入或创建树形选择器
     this.treeSelector = null;
     if (TreeSelector) {
@@ -1422,7 +1422,7 @@ export default class Sheet {
         console.error('创建内置树形选择器失败:', e);
       }
     }
-    
+
     // 导入或创建弹窗
     this.popupDialog = null;
     if (PopupDialog) {
@@ -1441,7 +1441,7 @@ export default class Sheet {
         console.error('创建内置弹窗失败:', e);
       }
     }
-    
+
     // 创建树形编辑器
     try {
       const TreeEditor = require('./tree-editor').default;
@@ -1464,7 +1464,7 @@ export default class Sheet {
     } catch (e) {
       console.error('创建树形编辑器失败:', e);
     }
-    
+
     // 创建弹窗内容编辑器
     try {
       const PopupEditor = require('./popup-editor').default;
@@ -1487,11 +1487,11 @@ export default class Sheet {
     } catch (e) {
       console.error('创建弹窗编辑器失败:', e);
     }
-    
+
     // 创建日期选择器
     this.datepicker = new Datepicker();
     document.body.appendChild(this.datepicker.el.el);
-    
+
     // root element
     this.el.children(
       this.tableEl,
@@ -1512,58 +1512,57 @@ export default class Sheet {
     // init selector [0, 0]
     selectorSet.call(this, false, 0, 0);
     if (this.options.mode === "read") this.selector.hide();
-    
+
     // 在预览模式下隐藏工具栏
     if ((options.mode === 'preview' || options.mode === 'enabled') && this.toolbar) {
       this.toolbar.el.hide();
     }
-    
+
     // 添加事件监听器
     this.on('show-tree-selector', ({ ri, ci, cell }) => {
       if (this.treeSelector) {
         // 设置树形数据
         this.treeSelector.setItems(cell.treeData || []);
-        
+
         // 设置回调函数
         this.treeSelector.setChange((selectedItem) => {
           this.data.setCellText(ri, ci, selectedItem.label);
           this.table.render();
         });
-        
+
         // 显示树形选择器
         this.treeSelector.show();
       }
     });
-    
+
     this.on('show-tree-editor', ({ ri, ci, cell }) => {
       if (this.treeEditor) {
         // 设置当前编辑的单元格
         this.treeEditor.setCell(ri, ci, cell);
-        
+
         // 计算位置 - 尽量居中显示
-        const viewRect = this.getRect();
         const editorWidth = this.treeEditor.width;
         const editorHeight = this.treeEditor.height;
-        
-        // 默认居中
-        let left = viewRect.left + (viewRect.width - editorWidth) / 2;
-        let top = viewRect.top + (viewRect.height - editorHeight) / 2;
-        
+
+        // 默认屏幕居中
+        let left = (window.innerWidth - editorWidth) / 2;
+        let top = (window.innerHeight - editorHeight) / 2;
+
         // 确保不超出视窗
         left = Math.max(0, Math.min(left, window.innerWidth - editorWidth));
         top = Math.max(0, Math.min(top, window.innerHeight - editorHeight));
-        
+
         // 设置编辑器位置
         this.treeEditor.el
           .css('position', 'absolute')
           .css('left', `${left}px`)
           .css('top', `${top}px`);
-        
+
         // 显示编辑器
         this.treeEditor.show();
       }
     });
-    
+
     this.on('show-popup', ({ ri, ci, cell }) => {
       if (this.popupDialog) {
         // 获取弹窗数据
@@ -1573,16 +1572,16 @@ export default class Sheet {
           height: 300,
           content: '<div style="padding:10px">弹窗内容</div>'
         };
-        
+
         // 设置标题
         this.popupDialog.setTitle(popupData.title);
-        
+
         // 设置尺寸
         this.popupDialog.setSize(popupData.width, popupData.height);
-        
+
         // 设置内容
         this.popupDialog.setContent(popupData.content);
-        
+
         // 设置确认回调
         this.popupDialog.onConfirm = () => {
           // 更新单元格的选择状态
@@ -1592,52 +1591,76 @@ export default class Sheet {
           // 重新渲染表格
           this.table.render();
         };
-        
+
         // 显示弹窗
         this.popupDialog.show();
       }
     });
-    
+
     this.on('show-popup-editor', ({ ri, ci, cell }) => {
       if (this.popupEditor) {
         // 设置当前编辑的单元格
         this.popupEditor.setCell(ri, ci, cell);
-        
+
         // 计算位置 - 尽量居中显示
-        const viewRect = this.getRect();
         const editorWidth = this.popupEditor.width;
         const editorHeight = this.popupEditor.height;
-        
-        // 默认居中
-        let left = viewRect.left + (viewRect.width - editorWidth) / 2;
-        let top = viewRect.top + (viewRect.height - editorHeight) / 2;
-        
+
+        // 默认屏幕居中
+        let left = (window.innerWidth - editorWidth) / 2;
+        let top = (window.innerHeight - editorHeight) / 2;
+
         // 确保不超出视窗
         left = Math.max(0, Math.min(left, window.innerWidth - editorWidth));
         top = Math.max(0, Math.min(top, window.innerHeight - editorHeight));
-        
+
         // 设置编辑器位置
         this.popupEditor.el
           .css('position', 'absolute')
           .css('left', `${left}px`)
           .css('top', `${top}px`);
-        
+
         // 显示弹窗编辑器
         this.popupEditor.show();
       }
     });
-    
+
     this.on('show-datepicker', ({ ri, ci, cell }) => {
       if (this.datepicker) {
-        // 设置当前编辑的单元格
-        this.datepicker.setCell(ri, ci, cell);
-        
+        // 设置当前值
+        this.datepicker.setValue(cell.text || '');
+
+        // 计算位置 - 尽量居中显示
+        const editorWidth = 260; // 预估宽度
+        const editorHeight = 320; // 预估高度
+
+        // 默认屏幕居中
+        let left = (window.innerWidth - editorWidth) / 2;
+        let top = (window.innerHeight - editorHeight) / 2;
+
+        // 确保不超出视窗
+        left = Math.max(0, Math.min(left, window.innerWidth - editorWidth));
+        top = Math.max(0, Math.min(top, window.innerHeight - editorHeight));
+
+        // 设置位置
+        this.datepicker.el
+          .css('position', 'absolute')
+          .css('left', `${left}px`)
+          .css('top', `${top}px`);
+
         // 设置回调函数
         this.datepicker.setChange((formattedDate) => {
-          this.data.setCellText(ri, ci, formattedDate);
+          let dateStr = formattedDate;
+          if (formattedDate instanceof Date) {
+            const y = formattedDate.getFullYear();
+            const m = String(formattedDate.getMonth() + 1).padStart(2, '0');
+            const d = String(formattedDate.getDate()).padStart(2, '0');
+            dateStr = `${y}-${m}-${d}`;
+          }
+          this.data.setCellText(ri, ci, dateStr, 'finished');
           this.table.render();
         });
-        
+
         // 显示弹窗
         this.datepicker.show();
       }
@@ -1753,7 +1776,20 @@ export default class Sheet {
     const { ri, ci } = data.getCellRectByXY(evt.offsetX, evt.offsetY);
     const cell = this.data.rows.getCell(ri, ci);
     // 检查当前模式
-    const mode = this.data.settings?.mode;
+    const getParam = (name) => {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const sessionVal = window.sessionStorage.getItem(name);
+        if (sessionVal !== null && sessionVal !== undefined) {
+          return sessionVal;
+        }
+      }
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    };
+
+    const mode = getParam('mode');
+
+    console.log(mode);
     // 如果单元格不可编辑且不是设计模式
     if (cell && cell.editable === false && mode !== 'design') {
       return;
@@ -1771,15 +1807,18 @@ export default class Sheet {
       // 根据不同类型使用不同的编辑器或弹窗
       if (cell.cellType === 'date') {
         // 日期选择器处理逻辑
-        this.trigger('show-datepicker', { ri, ci, cell });
+        if (mode !== 'preview') {
+          this.trigger('show-datepicker', { ri, ci, cell });
+        }
         return;
       } else if (cell.cellType === 'tree') {
         // 触发树形选择器事件
         if (mode === 'design') {
           // 设计模式：允许编辑树形数据
           this.trigger('show-tree-editor', { ri, ci, cell });
-        } else {
-          // 预览模式：只允许选择
+        } else if (mode !== 'preview') {
+          // 预览模式：不显示树形选择
+          // 非预览模式：允许选择
           this.trigger('show-tree-selector', { ri, ci, cell });
         }
         return; // 不要继续使用默认编辑器
@@ -1788,7 +1827,7 @@ export default class Sheet {
         if (mode === 'design') {
           // 设计模式：允许编辑弹窗内容
           this.trigger('show-popup-editor', { ri, ci, cell });
-        } else {
+        } else if (mode !== 'preview') {
           // 预览模式：只显示弹窗
           this.trigger('show-popup', { ri, ci, cell });
         }
@@ -1798,5 +1837,5 @@ export default class Sheet {
     // 常规编辑处理
     editorSet.call(this);
   }
-  
+
 }

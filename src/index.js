@@ -16,9 +16,21 @@ import PopupDialog from "./component/popup-dialog";
 class Spreadsheet {
 
   constructor(selectors, options = {}) {
-    // 检查URL参数
-    const urlParams = new URLSearchParams(window.location.search);
-    const mode = urlParams.get('mode');
+    // 优先从 sessionStorage 读取，其次从 URL 读取
+    const getParam = (name) => {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const sessionVal = window.sessionStorage.getItem(name);
+        if (sessionVal !== null && sessionVal !== undefined) {
+          return sessionVal;
+        }
+      }
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(name);
+    };
+    
+    const mode = getParam('mode');
+
+    console.log('mode:', mode);
     
     let targetEl = selectors;
     this.options = {
