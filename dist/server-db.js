@@ -30,11 +30,11 @@ function getFileName(id, isPureData) {
 }
 
 // 数据库配置
-const dbConfig = {
-  host: "piscesys.com",
-  user: "spreadsheet",
-  password: "Jiangge...0421",
-  database: "spreadsheet",
+const dbConfig = {   // 自行配置数据库
+  host: "",
+  user: "",
+  password: "",
+  database: "",
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0
